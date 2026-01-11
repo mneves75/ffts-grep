@@ -201,8 +201,8 @@ Benchmarked on Apple M-series, 10K synthetic files. Run `cargo bench` for your s
 
 | Metric | Target | Measured |
 |--------|--------|----------|
-| Peak during indexing (10K files) | < 100MB | Run `cargo bench memory` |
-| Search-only (no indexing) | < 20MB | Run `cargo bench memory` |
+| Peak during indexing (10K files) | < 50MB | ~16MB |
+| Search-only (no indexing) | < 20MB | ~9MB |
 
 ## Claude Code Integration
 

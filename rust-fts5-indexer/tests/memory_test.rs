@@ -52,9 +52,25 @@ fn test_memory_increases_with_allocation() {
         after.saturating_sub(before)
     );
 
-    // We just verify we can measure - the exact delta varies by platform
+    // Memory should not decrease after allocation (sanity check)
+    // Note: On some systems with memory compression, 'after' might equal 'before'
+    // but should never be less
     assert!(
-        after > 0,
-        "Should be able to measure memory after allocation"
+        after >= before,
+        "Memory should not decrease after allocation: before={}, after={}",
+        before,
+        after
     );
+
+    // If we allocated 10MB and touched it, we expect at least some increase
+    // on most systems. Skip this assertion on systems with aggressive overcommit.
+    let delta = after.saturating_sub(before);
+    if delta > 0 {
+        // Good: we can measure memory changes
+        assert!(
+            delta < 100_000_000,
+            "Memory delta suspiciously large: {} bytes (expected ~10MB)",
+            delta
+        );
+    }
 }
