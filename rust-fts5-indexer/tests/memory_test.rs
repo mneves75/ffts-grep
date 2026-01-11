@@ -6,7 +6,7 @@ use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, RefreshKind, System};
 fn get_rss_bytes() -> u64 {
     let pid = Pid::from_u32(std::process::id());
     let mut sys =
-        System::new_with_specifics(RefreshKind::nothing().with_processes(ProcessRefreshKind::everything()));
+        System::new_with_specifics(RefreshKind::nothing().with_processes(ProcessRefreshKind::nothing().with_memory()));
     sys.refresh_processes(ProcessesToUpdate::All, true);
     sys.process(pid).map(|p| p.memory()).unwrap_or(0)
 }

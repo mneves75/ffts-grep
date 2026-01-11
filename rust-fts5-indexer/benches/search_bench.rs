@@ -11,7 +11,7 @@ use ffts_indexer::indexer::{Indexer, IndexerConfig};
 fn get_rss_mb() -> f64 {
     let pid = Pid::from_u32(std::process::id());
     let mut sys =
-        System::new_with_specifics(RefreshKind::nothing().with_processes(ProcessRefreshKind::everything()));
+        System::new_with_specifics(RefreshKind::nothing().with_processes(ProcessRefreshKind::nothing().with_memory()));
     sys.refresh_processes(ProcessesToUpdate::All, true);
     sys.process(pid)
         .map(|p| p.memory() as f64 / 1_000_000.0) // bytes to MB
