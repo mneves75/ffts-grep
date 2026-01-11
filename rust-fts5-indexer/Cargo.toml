@@ -1,0 +1,65 @@
+[package]
+name = "ffts-indexer"
+version = "0.9"
+edition = "2024"
+rust-version = "1.85"
+description = "Fast full-text search file indexer using SQLite FTS5"
+repository = "https://github.com/mneves75/ffts-grep"
+license = "Apache-2.0"
+keywords = ["fts5", "sqlite", "search", "indexer", "claude-code"]
+categories = ["command-line-utilities", "database"]
+
+[[bin]]
+name = "ffts-grep"
+path = "src/main.rs"
+
+[dependencies]
+# SQLite - bundled with FTS5 enabled for guaranteed availability
+rusqlite = { version = "0.38", features = ["bundled"] }
+
+# CLI - derive API only
+clap = { version = "4", features = ["derive", "env", "std", "help"], default-features = false }
+
+# Gitignore - battle-tested implementation
+ignore = { version = "0.4", default-features = false }
+
+# Serialization - minimal
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["std"] }
+
+# Error handling - zero-cost abstractions
+thiserror = "2"
+
+# Chrono for timestamps
+chrono = "0.4"
+
+# Wyhash - fast hashing for content comparison
+wyhash = "0.5"
+
+# Cross-platform directories - home directory detection
+dirs = "5"
+
+# Structured logging - zero-cost abstractions, privacy-first
+tracing = { version = "0.1", features = ["std"], default-features = false }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"], default-features = false }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_Storage_FileSystem"] }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+tempfile = "3"
+assert_cmd = "2"
+predicates = "3"
+serial_test = "3"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+strip = true
+codegen-units = 1
+panic = "abort"
+
+[[bench]]
+name = "search_bench"
+harness = false

@@ -1,0 +1,73 @@
+# === Zig ===
+zig-out/
+.zig-cache/
+
+# === Rust ===
+target/
+Cargo.lock
+
+# === Build ===
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.lib
+*.exp
+*.pdb
+
+# === Database ===
+*.sqlite3
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.db.tmp*
+
+# === Project-specific ===
+docs/GUIDELINES-REF
+
+# === IDE ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === OS ===
+.DS_Store
+Thumbs.db
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# === Env ===
+.env
+.env.local
+.env.*.local
+
+# === Test ===
+test_output/
+coverage/
+*.gcda
+*.gcno
+
+# === Misc ===
+*.log
+*.pid
+*.seed
+
+# cc-fts5-indexer database files (auto-generated)
+.claude-fts5.db
+.claude-fts5.db-shm
+.claude-fts5.db-wal
+.claude-fts5.db.tmp
+
+# ffts-grep database files (auto-generated)
+.ffts-index.db
+.ffts-index.db-shm
+.ffts-index.db-wal
+.ffts-index.db.tmp

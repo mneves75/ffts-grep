@@ -1,0 +1,251 @@
+# ffts-grep
+
+[![Version](https://img.shields.io/badge/version-0.9-blue.svg)](https://github.com/mneves75/ffts-grep/releases)
+[![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org/)
+
+Fast full-text search file indexer using SQLite FTS5.
+
+A high-performance file indexer that provides sub-10ms queries after initial indexing. Uses SQLite FTS5 with BM25 ranking for relevant search results.
+
+## Features
+
+- **SQLite FTS5** full-text search with BM25 ranking
+- **Filename-aware ranking** - Files with query terms in filename rank higher (e.g., `CLAUDE.md` ranks above `docs/MASTRA-VS-CLAUDE-SDK.md` for "claude")
+- **Sub-10ms queries** after initial indexing
+- **Incremental updates** - Only reindexes modified files
+- **Content search** - Search filenames, paths, and file contents
+- **Single binary** - No external dependencies (bundled SQLite)
+- **Git-aware filtering** - Respects root `.gitignore` and always ignores `.git/`
+- **Configurable performance** - Tune SQLite PRAGMAs via CLI flags
+- **Platform-aware** - Automatically adjusts for macOS limitations
+- **Schema migration** - Automatic upgrade from older versions
+
+## Installation
+
+```bash
+# Build from source
+git clone https://github.com/mneves75/ffts-grep
+cd ffts-grep/rust-fts5-indexer
+cargo build --release
+
+# Copy binary to PATH
+cp target/release/ffts-grep ~/.local/bin/
+chmod +x ~/.local/bin/ffts-grep
+```
+
+Or use the deploy script for Claude Code integration:
+
+```bash
+./deploy_cc.sh
+```
+
+## Usage
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `ffts-grep init` | Initialize project (gitignore + database) |
+| `ffts-grep index` | Index or reindex files |
+| `ffts-grep search <query>` | Search indexed files |
+| `ffts-grep doctor` | Run diagnostic checks |
+
+### Global Options
+
+| Option | Description |
+|--------|-------------|
+| `--quiet, -q` | Suppress status messages (for CI/scripting) |
+| `--project-dir <path>` | Project root directory (default: current directory) |
+| `--help` | Show help information |
+| `--version` | Show version information |
+
+### Subcommand: init
+
+Initialize a new project with database and gitignore configuration.
+
+```bash
+# Full initialization (gitignore + database + index)
+ffts-grep init
+
+# Gitignore only (skip database creation)
+ffts-grep init --gitignore-only
+
+# Force reinitialization
+ffts-grep init --force
+```
+
+The `init` command:
+1. Adds `.ffts-index.db*` entries to `.gitignore` (idempotent)
+2. Creates the SQLite database with proper schema
+3. Indexes all files in the project
+
+### Subcommand: index
+
+Index or reindex files in the project directory.
+
+```bash
+# Incremental index (skips unchanged files)
+ffts-grep index
+
+# Force full reindex (atomic replace)
+ffts-grep index --reindex
+```
+
+### Subcommand: search
+
+Search indexed files using FTS5 queries.
+
+```bash
+# Basic search
+ffts-grep search "main function"
+
+# Search paths only (no content)
+ffts-grep search --paths "src/main"
+
+# JSON output format
+ffts-grep search --format json "error handling"
+
+# Run performance benchmark
+ffts-grep search --benchmark "test query"
+```
+
+### Subcommand: doctor
+
+Run diagnostic checks on installation health.
+
+```bash
+# Basic health check
+ffts-grep doctor
+
+# Verbose output with detailed diagnostics
+ffts-grep doctor --verbose
+
+# JSON output for CI/automation
+ffts-grep doctor --json
+```
+
+The `doctor` command checks:
+- Database exists and is readable
+- Application ID is correct
+- Schema is complete (tables, triggers, indexes)
+- FTS5 integrity
+- Journal mode (WAL recommended)
+- File count
+- Gitignore entries
+- Binary availability
+- Orphan WAL files
+
+### Pragma Tuning Options
+
+Fine-tune SQLite performance for your environment.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--pragma-cache-size` | -32000 | Cache size in KB (negative) or pages (positive) |
+| `--pragma-mmap-size` | Platform-specific | Memory-mapped I/O size (0 on macOS, 256MB on Linux) |
+| `--pragma-page-size` | 4096 | Database page size (512-65536, power of 2) |
+| `--pragma-busy-timeout` | 5000 | Busy timeout in milliseconds (0 = disabled) |
+| `--pragma-synchronous` | NORMAL | Synchronous mode (OFF, NORMAL, FULL, EXTRA) |
+
+Example with custom PRAGMAs:
+
+```bash
+# Large codebase optimization (128MB cache)
+ffts-grep index --pragma-cache-size=-131072
+
+# Maximum durability
+ffts-grep search --pragma-synchronous=FULL
+
+# High-concurrency environments
+ffts-grep index --pragma-busy-timeout=10000
+```
+
+## Architecture
+
+```
+rust-fts5-indexer/src/
+├── main.rs            # Entry point, CLI dispatch
+├── lib.rs             # Library exports
+├── cli.rs             # Argument parsing (clap subcommands)
+├── db.rs              # SQLite FTS5 layer, PRAGMA config
+├── indexer.rs         # Directory walker, batch upserts
+├── search.rs          # Query execution, result formatting
+├── doctor.rs          # Diagnostic checks (10 checks)
+└── init.rs            # Gitignore updates, project init
+```
+
+### Database Schema
+
+- **`files`** table: `path` (PK), `filename`, `content_hash`, `mtime`, `size`, `indexed_at`, `content`
+- **`files_fts`** virtual table: FTS5 index on `filename`, `path`, `content` with BM25 weights (100:50:1)
+- **Triggers**: Auto-sync FTS5 on INSERT/UPDATE/DELETE
+- **Location**: `.ffts-index.db` in project root (WAL mode)
+- **Migration**: Automatic schema upgrade from v0.9/v0.10 to v0.11
+
+## Performance
+
+| Metric | Target | Typical |
+|--------|--------|---------|
+| Cold query (10K files) | < 500ms | 100-300ms |
+| Warm query | < 10ms | 1-5ms |
+| Memory (indexing) | < 100MB | 40-80MB |
+| Memory (idle) | < 10MB | 5-8MB |
+
+## Claude Code Integration
+
+[Claude Code](https://claude.com/product/claude-code) is Anthropic's agentic coding tool that lives in your terminal. This indexer provides fast file suggestions when Claude Code needs to find relevant files in your codebase.
+
+See the official documentation: [File Suggestion Settings](https://code.claude.com/docs/en/settings#file-suggestion-settings)
+
+### Configuration
+
+Add to `~/.claude/settings.json`:
+
+```json
+{
+  "fileSuggestion": {
+    "command": "/path/to/ffts-grep"
+  }
+}
+```
+
+### How It Works
+
+When you type `@` in Claude Code to reference a file, Claude Code invokes your custom file suggestion command:
+
+1. **Claude Code sends a query** via stdin as JSON: `{"query": "src/comp"}`
+2. **ffts-grep searches** the FTS5 index for matching files
+3. **Results returned** via stdout as newline-separated paths
+4. **Claude Code displays** the suggestions for you to select
+
+```
+┌─────────────────┐      stdin: {"query": "..."}      ┌─────────────────┐
+│   Claude Code   │ ──────────────────────────────▶  │   ffts-grep     │
+│                 │                                   │                 │
+│   @ file picker │ ◀──────────────────────────────  │   FTS5 search   │
+└─────────────────┘      stdout: path\npath\n...      └─────────────────┘
+```
+
+### Features
+
+- **Stdin JSON protocol**: Receives `{"query": "..."}` from Claude Code
+- **Stdout response**: Returns matching file paths (newline-separated)
+- **Auto-init**: Database initializes automatically on first search
+- **Project detection**: Uses `CLAUDE_PROJECT_DIR` or finds project root via `.git`
+
+## Exit Codes
+
+| Code | Description |
+|------|-------------|
+| 0 | Success |
+| 1 | Warnings (non-fatal issues) |
+| 2 | Errors (diagnostic failures) |
+
+## License
+
+Apache License 2.0 - See [LICENSE](LICENSE) for details.
+
+---
+
+Built for [Claude Code](https://claude.com/product/claude-code). Made with ❤️ by Claude Code. May be used by other tools.

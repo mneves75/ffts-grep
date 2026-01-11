@@ -1,0 +1,140 @@
+   Compiling ffts-indexer v0.10.0 (/Users/mneves/dev/PROJETOS/claude-fts5-file-index/rust-fts5-indexer)
+    Finished `bench` profile [optimized] target(s) in 8.26s
+     Running benches/search_bench.rs (target/release/deps/search_bench-41a641214cc9a1b8)
+Gnuplot not found, using plotters backend
+Benchmarking search/search/main
+Benchmarking search/search/main: Warming up for 3.0000 s
+Benchmarking search/search/main: Collecting 100 samples in estimated 5.0411 s (470k iterations)
+Benchmarking search/search/main: Analyzing
+search/search/main      time:   [9.9628 µs 10.020 µs 10.112 µs]
+                        change: [-0.3750% +0.0600% +0.5966%] (p = 0.83 > 0.05)
+                        No change in performance detected.
+Found 4 outliers among 100 measurements (4.00%)
+  2 (2.00%) low mild
+  1 (1.00%) high mild
+  1 (1.00%) high severe
+Benchmarking search/search/function
+Benchmarking search/search/function: Warming up for 3.0000 s
+Benchmarking search/search/function: Collecting 100 samples in estimated 7.0138 s (15k iterations)
+Benchmarking search/search/function: Analyzing
+search/search/function  time:   [421.91 µs 440.23 µs 480.45 µs]
+                        change: [-10.240% +0.2643% +14.445%] (p = 0.97 > 0.05)
+                        No change in performance detected.
+Found 8 outliers among 100 measurements (8.00%)
+  1 (1.00%) low severe
+  1 (1.00%) high mild
+  6 (6.00%) high severe
+Benchmarking search/search/println
+Benchmarking search/search/println: Warming up for 3.0000 s
+Benchmarking search/search/println: Collecting 100 samples in estimated 7.1092 s (15k iterations)
+Benchmarking search/search/println: Analyzing
+search/search/println   time:   [422.53 µs 443.30 µs 491.12 µs]
+                        change: [-12.400% +0.7190% +18.180%] (p = 0.92 > 0.05)
+                        No change in performance detected.
+Found 6 outliers among 100 measurements (6.00%)
+  2 (2.00%) low severe
+  1 (1.00%) low mild
+  1 (1.00%) high mild
+  2 (2.00%) high severe
+Benchmarking search/search/Struct
+Benchmarking search/search/Struct: Warming up for 3.0000 s
+Benchmarking search/search/Struct: Collecting 100 samples in estimated 7.1927 s (15k iterations)
+Benchmarking search/search/Struct: Analyzing
+search/search/Struct    time:   [432.01 µs 450.49 µs 483.30 µs]
+                        change: [-12.302% -0.0741% +14.243%] (p = 0.99 > 0.05)
+                        No change in performance detected.
+Found 6 outliers among 100 measurements (6.00%)
+  2 (2.00%) low mild
+  1 (1.00%) high mild
+  3 (3.00%) high severe
+Benchmarking search/search/new
+Benchmarking search/search/new: Warming up for 3.0000 s
+Benchmarking search/search/new: Collecting 100 samples in estimated 6.8946 s (15k iterations)
+Benchmarking search/search/new: Analyzing
+search/search/new       time:   [421.02 µs 440.26 µs 477.43 µs]
+                        change: [-10.674% +0.6835% +13.759%] (p = 0.89 > 0.05)
+                        No change in performance detected.
+Found 8 outliers among 100 measurements (8.00%)
+  2 (2.00%) low mild
+  3 (3.00%) high mild
+  3 (3.00%) high severe
+Benchmarking search/search/helper
+Benchmarking search/search/helper: Warming up for 3.0000 s
+Benchmarking search/search/helper: Collecting 100 samples in estimated 5.3126 s (40k iterations)
+Benchmarking search/search/helper: Analyzing
+search/search/helper    time:   [122.34 µs 129.21 µs 144.03 µs]
+                        change: [-13.651% +1.6567% +22.216%] (p = 0.87 > 0.05)
+                        No change in performance detected.
+Found 3 outliers among 100 measurements (3.00%)
+  1 (1.00%) high mild
+  2 (2.00%) high severe
+
+Benchmarking index/index_files/100
+Benchmarking index/index_files/100: Warming up for 3.0000 s
+Benchmarking index/index_files/100: Collecting 100 samples in estimated 5.6179 s (200 iterations)
+Benchmarking index/index_files/100: Analyzing
+index/index_files/100   time:   [26.919 ms 29.417 ms 33.100 ms]
+                        change: [+4.1158% +14.380% +28.863%] (p = 0.01 < 0.05)
+                        Performance has regressed.
+Found 14 outliers among 100 measurements (14.00%)
+  8 (8.00%) high mild
+  6 (6.00%) high severe
+Benchmarking index/index_files/500
+Benchmarking index/index_files/500: Warming up for 3.0000 s
+
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 12.5s, or reduce sample count to 40.
+Benchmarking index/index_files/500: Collecting 100 samples in estimated 12.490 s (100 iterations)
+Benchmarking index/index_files/500: Analyzing
+index/index_files/500   time:   [108.04 ms 109.06 ms 110.21 ms]
+                        change: [-5.4283% -1.8027% +1.1984%] (p = 0.32 > 0.05)
+                        No change in performance detected.
+Found 5 outliers among 100 measurements (5.00%)
+  1 (1.00%) high mild
+  4 (4.00%) high severe
+Benchmarking index/index_files/1000
+Benchmarking index/index_files/1000: Warming up for 3.0000 s
+
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 23.6s, or reduce sample count to 20.
+Benchmarking index/index_files/1000: Collecting 100 samples in estimated 23.573 s (100 iterations)
+Benchmarking index/index_files/1000: Analyzing
+index/index_files/1000  time:   [253.00 ms 286.28 ms 327.02 ms]
+                        change: [+11.773% +27.837% +46.878%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 20 outliers among 100 measurements (20.00%)
+  5 (5.00%) high mild
+  15 (15.00%) high severe
+
+Benchmarking wyhash_100bytes
+Benchmarking wyhash_100bytes: Warming up for 3.0000 s
+Benchmarking wyhash_100bytes: Collecting 100 samples in estimated 5.0001 s (109M iterations)
+Benchmarking wyhash_100bytes: Analyzing
+wyhash_100bytes         time:   [45.298 ns 57.207 ns 70.455 ns]
+                        change: [+35.761% +60.216% +94.627%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 17 outliers among 100 measurements (17.00%)
+  1 (1.00%) high mild
+  16 (16.00%) high severe
+
+Benchmarking cold_start_10k/cold_query
+Benchmarking cold_start_10k/cold_query: Warming up for 3.0000 s
+Benchmarking cold_start_10k/cold_query: Collecting 50 samples in estimated 5.5792 s (200 iterations)
+Benchmarking cold_start_10k/cold_query: Analyzing
+cold_start_10k/cold_query
+                        time:   [21.505 ms 25.714 ms 30.543 ms]
+                        change: [+125.47% +166.39% +223.26%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 4 outliers among 50 measurements (8.00%)
+  2 (4.00%) high mild
+  2 (4.00%) high severe
+Benchmarking cold_start_10k/warm_query
+Benchmarking cold_start_10k/warm_query: Warming up for 3.0000 s
+Benchmarking cold_start_10k/warm_query: Collecting 50 samples in estimated 5.3129 s (200 iterations)
+Benchmarking cold_start_10k/warm_query: Analyzing
+cold_start_10k/warm_query
+                        time:   [19.312 ms 22.626 ms 26.512 ms]
+                        change: [+115.71% +158.60% +207.42%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 4 outliers among 50 measurements (8.00%)
+  3 (6.00%) high mild
+  1 (2.00%) high severe
+
