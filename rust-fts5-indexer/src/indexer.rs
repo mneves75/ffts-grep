@@ -1,0 +1,606 @@
+use ignore::{DirEntry, WalkBuilder};
+use std::fs;
+use std::fs::File;
+use std::io::Read;
+use std::path::{Path, PathBuf};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use crate::db::Database;
+use crate::error::{IndexerError, Result};
+use crate::{DB_NAME, DB_SHM_SUFFIX, DB_TMP_SUFFIX, DB_WAL_SUFFIX};
+#[cfg(windows)]
+use std::os::windows::ffi::OsStrExt;
+
+/// Configuration for the indexer.
+#[derive(Debug, Clone)]
+pub struct IndexerConfig {
+    /// Maximum file size to index (in bytes)
+    pub max_file_size: u64,
+    /// Files per transaction batch
+    pub batch_size: usize,
+    /// Follow symlinks (unsafe by default)
+    pub follow_symlinks: bool,
+}
+
+impl Default for IndexerConfig {
+    fn default() -> Self {
+        Self {
+            max_file_size: 1024 * 1024, // 1MB
+            batch_size: 500,
+            follow_symlinks: true,
+        }
+    }
+}
+
+/// Statistics from an indexing operation.
+#[derive(Debug, Default)]
+pub struct IndexStats {
+    pub files_indexed: u64,
+    pub files_skipped: u64,
+    pub bytes_indexed: u64,
+    pub duration: Duration,
+}
+
+#[cfg(windows)]
+fn atomic_replace(from: &Path, to: &Path) -> Result<()> {
+    use windows_sys::Win32::Storage::FileSystem::{
+        MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH, MoveFileExW,
+    };
+
+    let from_wide: Vec<u16> = from.as_os_str().encode_wide().chain(Some(0)).collect();
+    let to_wide: Vec<u16> = to.as_os_str().encode_wide().chain(Some(0)).collect();
+
+    let result = unsafe {
+        MoveFileExW(
+            from_wide.as_ptr(),
+            to_wide.as_ptr(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
+        )
+    };
+
+    if result == 0 {
+        return Err(IndexerError::Io { source: std::io::Error::last_os_error() });
+    }
+
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn atomic_replace(from: &Path, to: &Path) -> Result<()> {
+    fs::rename(from, to).map_err(|e| IndexerError::Io { source: e })
+}
+
+/// FTS5 file indexer.
+///
+/// Uses the `ignore` crate for gitignore-aware directory walking.
+pub struct Indexer {
+    db: Database,
+    root: PathBuf,
+    config: IndexerConfig,
+}
+
+impl Indexer {
+    /// Create a new indexer for the given project root.
+    pub fn new(root: &Path, db: Database, config: IndexerConfig) -> Self {
+        Self { db, root: root.to_path_buf(), config }
+    }
+
+    /// Index all files in the project directory (incremental).
+    ///
+    /// # Errors
+    /// Returns `IndexerError` if:
+    /// - Database operations fail (see [`Database::upsert_file`](crate::Database::upsert_file))
+    /// - File I/O operations fail (reading file content)
+    /// - Gitignore parsing fails
+    pub fn index_directory(&mut self) -> Result<IndexStats> {
+        // Conditional transaction strategy (2025+ best practice)
+        const TRANSACTION_THRESHOLD: usize = 50;
+
+        let start = SystemTime::now();
+
+        // Use ignore crate for gitignore-aware walking
+        let walk = WalkBuilder::new(&self.root)
+            .standard_filters(true) // Respect .gitignore
+            .same_file_system(true) // Prevent crossing filesystems
+            .build();
+
+        let mut stats = IndexStats::default();
+        let mut batch_count = 0;
+        let mut transaction_started = false;
+
+        for result in walk {
+            match result {
+                Ok(entry) => {
+                    // Process with batch tracking
+                    match self.process_entry(&entry, &mut stats) {
+                        Ok(needs_commit) => {
+                            if needs_commit {
+                                batch_count += 1;
+
+                                // Start transaction after hitting threshold
+                                if batch_count == TRANSACTION_THRESHOLD && !transaction_started {
+                                    self.db
+                                        .conn()
+                                        .execute("BEGIN IMMEDIATE", [])
+                                        .map_err(|e| IndexerError::Database { source: e })?;
+                                    transaction_started = true;
+                                }
+
+                                // Batched commits for large operations
+                                if transaction_started && batch_count >= self.config.batch_size {
+                                    self.db
+                                        .conn()
+                                        .execute("COMMIT", [])
+                                        .map_err(|e| IndexerError::Database { source: e })?;
+                                    self.db
+                                        .conn()
+                                        .execute("BEGIN IMMEDIATE", [])
+                                        .map_err(|e| IndexerError::Database { source: e })?;
+                                    batch_count = TRANSACTION_THRESHOLD; // Reset to threshold, not 0
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            // Log and continue - single file errors shouldn't fail the index
+                            tracing::warn!(
+                                path = %entry.path().display(),
+                                error = %e,
+                                "Failed to index file"
+                            );
+                            stats.files_skipped += 1;
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        error = %e,
+                        "Directory walk error"
+                    );
+                }
+            }
+        }
+
+        // Commit final batch if transaction was started
+        if transaction_started {
+            self.db
+                .conn()
+                .execute("COMMIT", [])
+                .map_err(|e| IndexerError::Database { source: e })?;
+        }
+
+        // SQLite-GUIDELINES.md: Run ANALYZE after bulk changes for query optimization
+        self.db.conn().execute("ANALYZE", []).ok();
+
+        // 2025+ best practice: PRAGMA optimize updates query planner statistics
+        self.db.optimize().ok();
+
+        // 2025+ best practice: FTS5 OPTIMIZE defragments index after >10% row changes
+        self.db.optimize_fts().ok();
+
+        stats.duration = start.elapsed().unwrap_or_default();
+        Ok(stats)
+    }
+
+    /// Process a single directory entry.
+    fn process_entry(&self, entry: &DirEntry, stats: &mut IndexStats) -> Result<bool> {
+        let path = entry.path();
+
+        // Skip the database file itself
+        if Self::is_database_file(path) {
+            return Ok(false);
+        }
+
+        // Skip directories (only index files)
+        if entry.file_type().is_some_and(|ft| ft.is_dir()) {
+            return Ok(false);
+        }
+
+        // Check if it's a symlink
+        if let Some(ft) = entry.file_type() {
+            if ft.is_symlink() {
+                // Check if symlink escapes root
+                if !self.config.follow_symlinks {
+                    stats.files_skipped += 1;
+                    return Ok(false); // Skip symlinks when disabled
+                }
+
+                // Resolve symlink and verify it's within root
+                if let Ok(resolved) = fs::canonicalize(path) {
+                    if !self.is_within_root(&resolved) {
+                        tracing::warn!(
+                            path = %path.display(),
+                            resolved = %resolved.display(),
+                            "Skipping symlink that escapes project root"
+                        );
+                        stats.files_skipped += 1;
+                        return Ok(false);
+                    }
+                } else {
+                    stats.files_skipped += 1;
+                    return Ok(false);
+                }
+            }
+        }
+
+        // Get metadata
+        let metadata = entry.metadata()?;
+
+        // Skip files larger than max size
+        if metadata.len() > self.config.max_file_size {
+            stats.files_skipped += 1;
+            return Ok(false);
+        }
+
+        // Read file content
+        let content = match self.read_file_content(path, metadata.len()) {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::warn!(
+                    path = %path.display(),
+                    error = %e,
+                    "Failed to read file content"
+                );
+                stats.files_skipped += 1;
+                return Ok(false);
+            }
+        };
+
+        // Upsert into database - use relative path from root
+        let rel_path = path.strip_prefix(&self.root).map_err(|_| IndexerError::PathTraversal {
+            path: path.to_string_lossy().to_string(),
+        })?;
+
+        // Cross-platform mtime using SystemTime (Windows compatible)
+        // Safety: u64→i64 cast is safe until year 2262 (i64::MAX seconds from UNIX_EPOCH)
+        #[allow(clippy::cast_possible_wrap)]
+        let mtime = metadata
+            .modified()
+            .map_err(|e| IndexerError::Io { source: e })?
+            .duration_since(UNIX_EPOCH)
+            .map_err(|e| IndexerError::Io {
+                source: std::io::Error::other(format!("Invalid mtime: {e}")),
+            })?
+            .as_secs() as i64;
+
+        // Safety: u64→i64 cast is safe for file sizes < 8 EiB (no production filesystem supports this)
+        #[allow(clippy::cast_possible_wrap)]
+        self.db.upsert_file(&rel_path.to_string_lossy(), &content, mtime, metadata.len() as i64)?;
+
+        stats.files_indexed += 1;
+        stats.bytes_indexed += metadata.len();
+
+        Ok(true)
+    }
+
+    /// Read file content with UTF-8 validation.
+    ///
+    /// # Memory Efficiency (2025+ best practice)
+    /// - Direct file read (no intermediate `BufReader` buffer) when size is known
+    /// - Pre-allocates `Vec<u8>` with known file size to avoid reallocation
+    /// - Size limit protects against memory exhaustion
+    /// - Explicit UTF-8 validation with `String::from_utf8`
+    ///
+    /// Note: FTS5 requires full content for indexing, so streaming is not possible.
+    /// Memory protection is provided by `max_file_size` limit (default 1MB).
+    fn read_file_content(&self, path: &Path, size: u64) -> Result<String> {
+        // Check size limit first (fail fast)
+        if size > self.config.max_file_size {
+            return Err(IndexerError::FileTooLarge { size, max: self.config.max_file_size });
+        }
+
+        // Open file and read directly (no BufReader overhead when size is known)
+        let mut file = File::open(path).map_err(|e| IndexerError::Io { source: e })?;
+
+        // Pre-allocate Vec with known capacity to avoid reallocation
+        // Safety: size ≤ max_file_size (1MB) which fits in usize on all target platforms (32-bit+)
+        #[allow(clippy::cast_possible_truncation)]
+        let mut bytes = Vec::with_capacity(size as usize);
+
+        // Read entire file into pre-allocated buffer
+        file.read_to_end(&mut bytes).map_err(|e| IndexerError::Io { source: e })?;
+
+        // Convert to String with explicit UTF-8 validation
+        String::from_utf8(bytes)
+            .map_err(|_| IndexerError::InvalidUtf8 { path: path.to_string_lossy().to_string() })
+    }
+
+    /// Check if a path is safely within the project root.
+    ///
+    /// # Performance
+    /// Called for symlink resolution. Marked `#[inline]` for hot-path optimization.
+    #[inline]
+    fn is_within_root(&self, path: &Path) -> bool {
+        // Path must start with root prefix
+        if let Ok(rel_path) = path.strip_prefix(&self.root) {
+            // Ensure no ".." components that could escape
+            for component in rel_path.components() {
+                if component == std::path::Component::ParentDir {
+                    return false;
+                }
+            }
+            return true;
+        }
+        false
+    }
+
+    /// Check if path is a database file that should be skipped.
+    ///
+    /// # Performance
+    /// Called for every file during directory walk. Marked `#[inline]` for hot-path optimization.
+    #[inline]
+    fn is_database_file(path: &Path) -> bool {
+        let path_str = path.to_string_lossy();
+
+        // Skip auxiliary WAL files
+        if path_str.ends_with("-shm") || path_str.ends_with("-wal") {
+            return true;
+        }
+
+        // Skip temp files from reindex
+        if path_str.ends_with(".db.tmp") {
+            return true;
+        }
+
+        // Skip by extension
+        if path_str.ends_with(".db")
+            || path_str.ends_with(".sqlite")
+            || path_str.ends_with(".sqlite3")
+        {
+            return true;
+        }
+
+        false
+    }
+
+    /// Force a commit of any pending transactions.
+    ///
+    /// # Errors
+    /// Currently returns `Ok(())` (rusqlite auto-commits after each execute).
+    /// This signature exists for API compatibility and future transaction batching.
+    pub const fn flush(&self) -> Result<()> {
+        // rusqlite auto-commits after each execute
+        Ok(())
+    }
+
+    /// Get the database instance.
+    pub const fn db(&self) -> &Database {
+        &self.db
+    }
+
+    /// Get mutable database instance.
+    pub const fn db_mut(&mut self) -> &mut Database {
+        &mut self.db
+    }
+
+    /// Get the project root.
+    pub fn root(&self) -> &Path {
+        &self.root
+    }
+
+    /// Get the configuration.
+    pub const fn config(&self) -> &IndexerConfig {
+        &self.config
+    }
+}
+
+/// Atomic reindex - creates a new database and atomically replaces the old one.
+///
+/// # Errors
+/// Returns `IndexerError` if:
+/// - Temporary database creation fails
+/// - Schema initialization fails
+/// - Directory indexing fails (see [`Indexer::index_directory`])
+/// - FTS5 optimization fails
+/// - File system operations fail (atomic rename, WAL file cleanup)
+pub fn atomic_reindex(root: &Path, config: &crate::db::PragmaConfig) -> Result<IndexStats> {
+    let db_path = root.join(DB_NAME);
+    let tmp_path = db_path.with_extension(DB_TMP_SUFFIX.trim_start_matches('.'));
+
+    // Clean up any existing temp file
+    let _ = fs::remove_file(&tmp_path);
+
+    // Create new database in temp location
+    let db = Database::open(&tmp_path, config)?;
+    db.init_schema()?;
+
+    // Index all files
+    let indexer_config = IndexerConfig::default();
+    let mut indexer = Indexer::new(root, db, indexer_config);
+    let stats = indexer.index_directory()?;
+
+    // Optimize FTS5
+    indexer.db.optimize_fts()?;
+
+    // 2025+ best practice: PRAGMA optimize for query planner statistics
+    indexer.db.optimize()?;
+
+    // Ensure WAL contents are checkpointed into the main database file before rename
+    indexer
+        .db
+        .conn()
+        .query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |row| {
+            let _busy: i64 = row.get(0)?;
+            let _log: i64 = row.get(1)?;
+            let _checkpointed: i64 = row.get(2)?;
+            Ok(())
+        })
+        .map_err(|e| IndexerError::Database { source: e })?;
+
+    // Close database before replacing file to avoid WAL/file descriptor issues
+    drop(indexer);
+
+    // Atomic rename (Windows requires replace strategy)
+    atomic_replace(&tmp_path, &db_path)?;
+
+    // Clean up WAL files from old database (if exists) after rename
+    let _ = fs::remove_file(root.join(format!("{DB_NAME}{DB_SHM_SUFFIX}")));
+    let _ = fs::remove_file(root.join(format!("{DB_NAME}{DB_WAL_SUFFIX}")));
+
+    Ok(stats)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::PragmaConfig;
+    use crate::{DB_NAME, DB_SHM_SUFFIX, DB_WAL_SUFFIX};
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_index_empty_dir() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join(DB_NAME);
+        let config = IndexerConfig::default();
+        let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+        db.init_schema().unwrap();
+        let mut indexer = Indexer::new(dir.path(), db, config);
+
+        let stats = indexer.index_directory().unwrap();
+        assert_eq!(stats.files_indexed, 0);
+    }
+
+    #[test]
+    fn test_atomic_reindex_cleans_up_wal_files() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join(DB_NAME);
+        let config = PragmaConfig::default();
+
+        let db = Database::open(&db_path, &config).unwrap();
+        db.init_schema().unwrap();
+
+        let shm_path = dir.path().join(format!("{DB_NAME}{DB_SHM_SUFFIX}"));
+        let wal_path = dir.path().join(format!("{DB_NAME}{DB_WAL_SUFFIX}"));
+        fs::write(&shm_path, b"fake shm").unwrap();
+        fs::write(&wal_path, b"fake wal").unwrap();
+
+        let stats = atomic_reindex(dir.path(), &config).unwrap();
+        assert_eq!(stats.files_indexed, 0);
+        assert!(db_path.exists());
+        assert!(!shm_path.exists());
+        assert!(!wal_path.exists());
+    }
+
+    #[test]
+    fn test_index_single_file() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join(DB_NAME);
+        let config = IndexerConfig::default();
+        let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+        db.init_schema().unwrap();
+        let mut indexer = Indexer::new(dir.path(), db, config);
+
+        // Create a test file
+        std::fs::write(dir.path().join("test.rs"), "fn main() {}").unwrap();
+
+        let stats = indexer.index_directory().unwrap();
+        assert_eq!(stats.files_indexed, 1);
+    }
+
+    #[test]
+    fn test_index_nested_dirs() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join(DB_NAME);
+        let config = IndexerConfig::default();
+        let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+        db.init_schema().unwrap();
+        let mut indexer = Indexer::new(dir.path(), db, config);
+
+        // Create nested structure
+        std::fs::create_dir_all(dir.path().join("src/lib")).unwrap();
+        std::fs::write(dir.path().join("src/lib/utils.rs"), "// utils").unwrap();
+        std::fs::write(dir.path().join("main.rs"), "// main").unwrap();
+
+        let stats = indexer.index_directory().unwrap();
+        assert_eq!(stats.files_indexed, 2);
+    }
+
+    #[test]
+    fn test_skips_binary_files() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join(DB_NAME);
+        let config = IndexerConfig::default();
+        let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+        db.init_schema().unwrap();
+        let mut indexer = Indexer::new(dir.path(), db, config);
+
+        // Create a binary file with invalid UTF-8
+        let binary_content = [0x80, 0x81, 0x82, 0xff];
+        std::fs::write(dir.path().join("binary.bin"), binary_content).unwrap();
+
+        let stats = indexer.index_directory().unwrap();
+        assert_eq!(stats.files_indexed, 0);
+        assert_eq!(stats.files_skipped, 1);
+    }
+
+    #[test]
+    fn test_skips_large_files() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join(DB_NAME);
+        let config = IndexerConfig::default();
+        let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+        db.init_schema().unwrap();
+        let mut indexer = Indexer::new(dir.path(), db, config);
+
+        // Create a file larger than 1MB
+        let large_content = vec![0u8; 1024 * 1024 + 1];
+        std::fs::write(dir.path().join("large.bin"), large_content).unwrap();
+
+        let stats = indexer.index_directory().unwrap();
+        assert_eq!(stats.files_indexed, 0);
+        assert_eq!(stats.files_skipped, 1);
+    }
+
+    #[test]
+    fn test_respects_gitignore() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join(DB_NAME);
+        let config = IndexerConfig::default();
+        let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+        db.init_schema().unwrap();
+        let mut indexer = Indexer::new(dir.path(), db, config);
+
+        // Test that .git directory is skipped by standard_filters
+        std::fs::create_dir_all(dir.path().join(".git/objects")).unwrap();
+        std::fs::write(dir.path().join(".git/config"), "git config").unwrap();
+        std::fs::write(dir.path().join("visible.rs"), "// visible").unwrap();
+
+        let stats = indexer.index_directory().unwrap();
+        assert_eq!(stats.files_indexed, 1); // Only visible.rs (.git should be skipped)
+    }
+
+    #[test]
+    fn test_skips_database_file() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join(DB_NAME);
+        let config = IndexerConfig::default();
+        let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+        db.init_schema().unwrap();
+        let mut indexer = Indexer::new(dir.path(), db, config);
+
+        // Create database-like files
+        std::fs::write(dir.path().join("test.rs"), "// test").unwrap();
+        std::fs::write(dir.path().join("data.db"), "// db").unwrap();
+        std::fs::write(dir.path().join("data.db-shm"), "// shm").unwrap();
+        std::fs::write(dir.path().join("data.db-wal"), "// wal").unwrap();
+
+        let stats = indexer.index_directory().unwrap();
+        assert_eq!(stats.files_indexed, 1); // Only test.rs
+    }
+
+    #[test]
+    fn test_is_within_root() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join(DB_NAME);
+        let config = IndexerConfig::default();
+        let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+        let indexer = Indexer::new(dir.path(), db, config);
+
+        // Path within root
+        let test_file = dir.path().join("test.rs");
+        assert!(indexer.is_within_root(&test_file));
+
+        // Path outside root
+        let outside = PathBuf::from("/etc/passwd");
+        assert!(!indexer.is_within_root(&outside));
+    }
+}

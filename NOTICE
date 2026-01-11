@@ -1,0 +1,17 @@
+# Notice for ffts-grep
+
+This work is based on an idea originally proposed by **Leo** (@leocooout).
+
+## Original Inspiration
+
+The concept of using SQLite FTS5 for file indexing in Claude Code was first described by Leo in their public discussion:
+- https://x.com/leocooout/status/2009337600742707335
+
+## Attribution
+
+We thank **[@leocooout](https://x.com/leocooout)** for sharing this approach publicly, which inspired the development of this implementation.
+
+## License
+
+ffts-grep is licensed under the Apache License 2.0.
+See the LICENSE file for details.
