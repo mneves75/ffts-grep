@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Fast full-text search file indexer using SQLite FTS5. Provides sub-10ms queries after initial indexing with BM25 ranking.
+Fast full-text search file indexer using SQLite FTS5. Provides ~10ms queries on 10K file codebases. Uses BM25 ranking for relevant search results.
 
 **Version**: 0.9 | **Rust**: 1.85+ (see `rust-fts5-indexer/Cargo.toml`)
 

@@ -6,13 +6,13 @@
 
 Fast full-text search file indexer using SQLite FTS5.
 
-A high-performance file indexer that provides sub-10ms queries after initial indexing. Uses SQLite FTS5 with BM25 ranking for relevant search results.
+A high-performance file indexer that provides ~10ms queries on 10K file codebases. Uses SQLite FTS5 with BM25 ranking for relevant search results.
 
 ## Features
 
 - **SQLite FTS5** full-text search with BM25 ranking
 - **Filename-aware ranking** - Files with query terms in filename rank higher (e.g., `CLAUDE.md` ranks above `docs/MASTRA-VS-CLAUDE-SDK.md` for "claude")
-- **Sub-10ms queries** after initial indexing
+- **~10ms queries** on 10K file codebases (benchmarked)
 - **Incremental updates** - Only reindexes modified files
 - **Content search** - Search filenames, paths, and file contents
 - **Single binary** - No external dependencies (bundled SQLite)
@@ -185,12 +185,24 @@ rust-fts5-indexer/src/
 
 ## Performance
 
-| Metric | Target | Typical |
-|--------|--------|---------|
-| Cold query (10K files) | < 500ms | 100-300ms |
-| Warm query | < 10ms | 1-5ms |
-| Memory (indexing) | < 100MB | 40-80MB |
-| Memory (idle) | < 10MB | 5-8MB |
+Benchmarked on Apple M-series, 10K synthetic files. Run `cargo bench` for your system.
+
+### Query Latency
+
+| Scenario | Target | Measured |
+|----------|--------|----------|
+| Cold query (fresh process, 10K files) | < 50ms | ~10ms |
+| Warm query (same process, cached) | < 15ms | ~9ms |
+
+> **Note**: Cold and warm queries perform similarly because OS filesystem cache
+> dominates SQLite's internal caching on modern SSDs.
+
+### Memory Usage
+
+| Metric | Target | Measured |
+|--------|--------|----------|
+| Peak during indexing (10K files) | < 100MB | Run `cargo bench memory` |
+| Search-only (no indexing) | < 20MB | Run `cargo bench memory` |
 
 ## Claude Code Integration
 

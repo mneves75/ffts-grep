@@ -1,6 +1,6 @@
 [package]
 name = "ffts-indexer"
-version = "0.9"
+version = "0.9.0"
 edition = "2024"
 rust-version = "1.85"
 description = "Fast full-text search file indexer using SQLite FTS5"
@@ -52,6 +52,7 @@ tempfile = "3"
 assert_cmd = "2"
 predicates = "3"
 serial_test = "3"
+sysinfo = "0.33"  # Cross-platform memory measurement (macOS, Linux, Windows)
 
 [profile.release]
 opt-level = 3
