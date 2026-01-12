@@ -44,8 +44,12 @@ The repo is a cross‑platform CLI that mutates on‑disk state, but it lacked p
 
 ### Phase 4: Documentation
 6) **CI badge and toolchain policy**
-   - Update README with CI badge and toolchain/MSRV policy.
+   - Update README with CI + memory validation badges and toolchain/MSRV policy.
    - Acceptance: Users can see CI health and expected Rust versions.
+
+7) **Contributing guidance**
+   - Add `CONTRIBUTING.md` with toolchain and verification requirements.
+   - Acceptance: Contributors have a single source of truth for local setup and checks.
 
 ## Test plan
 - `cd rust-fts5-indexer && cargo fmt -- --check`

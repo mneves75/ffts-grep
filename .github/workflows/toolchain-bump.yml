@@ -1,0 +1,38 @@
+name: Toolchain Bump
+
+on:
+  schedule:
+    - cron: "0 9 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Rust (stable)
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          rustflags: ""
+      - name: Update rust-toolchain.toml
+        run: |
+          version="$(rustc -V | awk '{print $2}')"
+          cat > rust-toolchain.toml <<EOF
+          [toolchain]
+          channel = "${version}"
+          components = ["rustfmt", "clippy"]
+          profile = "minimal"
+          EOF
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore: bump rust toolchain"
+          title: "chore: bump rust toolchain"
+          body: "Automated update of rust-toolchain.toml to the latest stable Rust."
+          branch: "ci/toolchain-bump"

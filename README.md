@@ -3,6 +3,7 @@
 [![Version](https://img.shields.io/badge/version-0.9-blue.svg)](https://github.com/mneves75/ffts-grep/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 [![CI](https://github.com/mneves75/ffts-grep/actions/workflows/ci.yml/badge.svg)](https://github.com/mneves75/ffts-grep/actions/workflows/ci.yml)
+[![Memory Validation](https://github.com/mneves75/ffts-grep/actions/workflows/memory-validation.yml/badge.svg)](https://github.com/mneves75/ffts-grep/actions/workflows/memory-validation.yml)
 [![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org/)
 
 Fast full-text search file indexer using SQLite FTS5.
@@ -46,6 +47,11 @@ Or use the deploy script for Claude Code integration:
 - **MSRV**: Rust 1.85+ (Edition 2024)
 - **Pinned dev toolchain**: `rust-toolchain.toml` targets Rust 1.92.0
 - **CI**: Tests run on Linux/macOS/Windows for both the latest stable and MSRV
+- **Scheduled**: Weekly memory validation (Linux/macOS) and monthly toolchain bump PRs
+
+## Contributing
+
+See `CONTRIBUTING.md` for toolchain and verification requirements.
 
 ## Usage
 
@@ -192,7 +198,7 @@ rust-fts5-indexer/src/
 - **`files_fts`** virtual table: FTS5 index on `filename`, `path`, `content` with BM25 weights (100:50:1)
 - **Triggers**: Auto-sync FTS5 on INSERT/UPDATE/DELETE
 - **Location**: `.ffts-index.db` in project root (WAL mode)
-- **Migration**: Automatic schema upgrade from v0.9/v0.10 to v0.11
+- **Migration**: Automatic upgrade from legacy 2‑column FTS5 schema to current 3‑column schema (with filename)
 
 ## Performance
 

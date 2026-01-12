@@ -245,3 +245,41 @@
 
 [2026-01-12 20:37:24 -0300] Unexpected repo state change: HEAD is now stash-recovery-branch; .github/workflows only has release.yml and prior workflow/toolchain/README changes are not present. Need user guidance to proceed.
 - Commands: git status -sb; git rev-parse --abbrev-ref HEAD; ls .github/workflows; head README.md.
+
+[2026-01-12 20:39:04 -0300] User requested full repo review again; branch ambiguity persists (HEAD=stash-recovery-branch). Need confirmation of target branch before proceeding.
+
+[2026-01-12 20:45:31 -0300] Applied CI/toolchain/scheduled workflows and benchmark memory fixes.
+- Added: rust-toolchain.toml; .github/workflows/{ci,memory-validation,toolchain-bump}.yml.
+- Updated README with CI badge already present; added scheduled workflow bullet.
+- Updated search_bench memory sampling to use per-process refresh, clarified limitations, and removed misleading delta claims.
+- Updated tests/memory_test.rs to refresh only current PID.
+- Commands: apply_patch for new files and edits.
+- TODO: run fmt/tests/clippy; update ENGINEERING_SPEC if needed.
+
+[2026-01-12 20:46:12 -0300] Verification after benchmark/CI updates.
+- Commands: cd rust-fts5-indexer && cargo fmt; cargo fmt -- --check; cargo test; cargo clippy --all-targets -- -D warnings.
+- Results: fmt clean; tests passed (167 lib + 1 main + 46 integration + 8 logging + 2 memory_test + 2 perf; 2 ignored memory_validation; doctests passed); clippy clean.
+
+[2026-01-12 20:47:18 -0300] Web verification for best-practice citations.
+- Sources: Rust 1.92.0 release blog; Rust 1.85.0 (Edition 2024) release blog; Cargo rust-version docs; actions-rust-lang/setup-rust-toolchain docs.
+- Purpose: confirm latest stable version and MSRV/edition references; justify CI toolchain setup and rustflags override.
+
+[2026-01-12 20:49:18 -0300] Doc fix: README migration note updated to reflect legacy 2-column -> 3-column schema instead of version numbers.
+
+[2026-01-12 20:50:34 -0300] Added memory-validation badge and CONTRIBUTING.md with toolchain/MSRV/verification guidance.
+
+[2026-01-12 20:50:59 -0300] Verification after docs + CONTRIBUTING updates.
+- Commands: cd rust-fts5-indexer && cargo fmt -- --check; cargo test; cargo clippy --all-targets -- -D warnings.
+- Results: fmt clean; tests passed (167 lib + 1 main + 46 integration + 8 logging + 2 memory_test + 2 perf; 2 ignored memory_validation; doctests passed); clippy clean.
+
+[2026-01-12 20:51:53 -0300] Added README Contributing section pointing to CONTRIBUTING.md.
+
+[2026-01-12 20:52:18 -0300] Verification after README/CONTRIBUTING updates.
+- Commands: cd rust-fts5-indexer && cargo fmt -- --check; cargo test; cargo clippy --all-targets -- -D warnings.
+- Results: fmt clean; tests passed (167 lib + 1 main + 46 integration + 8 logging + 2 memory_test + 2 perf; 2 ignored memory_validation; doctests passed); clippy clean.
+
+[2026-01-12 20:52:41 -0300] ENGINEERING_SPEC.md updated to include memory badge and CONTRIBUTING guidance.
+
+[2026-01-12 20:53:07 -0300] Verification after ENGINEERING_SPEC update.
+- Commands: cd rust-fts5-indexer && cargo fmt -- --check; cargo test; cargo clippy --all-targets -- -D warnings.
+- Results: fmt clean; tests passed (167 lib + 1 main + 46 integration + 8 logging + 2 memory_test + 2 perf; 2 ignored memory_validation; doctests passed); clippy clean.
