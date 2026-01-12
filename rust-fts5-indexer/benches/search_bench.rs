@@ -1,10 +1,22 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use std::fs;
+use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, RefreshKind, System};
 use tempfile::tempdir;
 
 use ffts_indexer::DB_NAME;
 use ffts_indexer::db::{Database, PragmaConfig};
 use ffts_indexer::indexer::{Indexer, IndexerConfig};
+
+/// Get current process RSS in MB (cross-platform: macOS, Linux, Windows).
+fn get_rss_mb() -> f64 {
+    let pid = Pid::from_u32(std::process::id());
+    let mut sys =
+        System::new_with_specifics(RefreshKind::nothing().with_processes(ProcessRefreshKind::nothing().with_memory()));
+    sys.refresh_processes(ProcessesToUpdate::All, true);
+    sys.process(pid)
+        .map(|p| p.memory() as f64 / 1_000_000.0) // bytes to MB
+        .unwrap_or(0.0)
+}
 
 /// Create a test database with N files for benchmarking.
 fn create_benchmark_db(num_files: usize) -> (tempfile::TempDir, Database) {
@@ -163,11 +175,71 @@ fn benchmark_cold_start_10k(c: &mut Criterion) {
     group.finish();
 }
 
+/// Memory benchmark: measures RSS during indexing at various scales.
+/// Used to validate README memory claims.
+fn benchmark_memory(c: &mut Criterion) {
+    let mut group = c.benchmark_group("memory");
+    group.sample_size(10); // Memory measurements are stable, fewer samples needed
+
+    for num_files in [1000, 5000, 10000] {
+        group.bench_with_input(
+            BenchmarkId::new("index_rss", num_files),
+            &num_files,
+            |b, n| {
+                b.iter_custom(|iters| {
+                    let mut total_duration = std::time::Duration::ZERO;
+                    let mut peak_rss = 0.0f64;
+
+                    for _ in 0..iters {
+                        let rss_before = get_rss_mb();
+                        let start = std::time::Instant::now();
+
+                        let (dir, db) = create_benchmark_db(*n);
+                        let config = IndexerConfig::default();
+                        let mut indexer = Indexer::new(dir.path(), db, config);
+                        let _ = indexer.index_directory();
+
+                        total_duration += start.elapsed();
+                        let rss_after = get_rss_mb();
+                        let rss_delta = rss_after - rss_before;
+                        peak_rss = peak_rss.max(rss_delta);
+                    }
+
+                    eprintln!("  [{n} files] RSS delta: {peak_rss:.1} MB");
+                    total_duration
+                });
+            },
+        );
+    }
+
+    // Search-only memory (no indexing, just query)
+    group.bench_function("search_rss", |b| {
+        let (dir, db) = create_benchmark_db(1000);
+        let _indexer = index_files(&dir, db);
+        let rss_baseline = get_rss_mb();
+
+        b.iter(|| {
+            let db_path = dir.path().join(DB_NAME);
+            let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+            let _ = db.search("function", false, 50);
+            let rss_current = get_rss_mb();
+            eprintln!(
+                "  Search RSS: {:.1} MB (delta: {:.1} MB)",
+                rss_current,
+                rss_current - rss_baseline
+            );
+        });
+    });
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     benchmark_search,
     benchmark_index,
     benchmark_hash,
-    benchmark_cold_start_10k
+    benchmark_cold_start_10k,
+    benchmark_memory
 );
 criterion_main!(benches);
