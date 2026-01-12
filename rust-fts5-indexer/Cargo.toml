@@ -1,6 +1,6 @@
 [package]
 name = "ffts-indexer"
-version = "0.9"
+version = "0.9.0"
 edition = "2024"
 rust-version = "1.85"
 description = "Fast full-text search file indexer using SQLite FTS5"
