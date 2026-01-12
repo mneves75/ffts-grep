@@ -7,15 +7,29 @@ use ffts_indexer::DB_NAME;
 use ffts_indexer::db::{Database, PragmaConfig};
 use ffts_indexer::indexer::{Indexer, IndexerConfig};
 
-/// Get current process RSS in MB (cross-platform: macOS, Linux, Windows).
-fn get_rss_mb() -> f64 {
-    let pid = Pid::from_u32(std::process::id());
-    let mut sys =
-        System::new_with_specifics(RefreshKind::nothing().with_processes(ProcessRefreshKind::nothing().with_memory()));
-    sys.refresh_processes(ProcessesToUpdate::All, true);
-    sys.process(pid)
-        .map(|p| p.memory() as f64 / 1_000_000.0) // bytes to MB
-        .unwrap_or(0.0)
+/// Lightweight RSS sampler for the current process.
+struct RssSampler {
+    pid: Pid,
+    sys: System,
+}
+
+impl RssSampler {
+    fn new() -> Self {
+        let pid = Pid::from_u32(std::process::id());
+        let sys = System::new_with_specifics(
+            RefreshKind::nothing().with_processes(ProcessRefreshKind::nothing().with_memory()),
+        );
+        Self { pid, sys }
+    }
+
+    /// Sample current RSS in MB (post-operation snapshot, not peak).
+    fn sample_mb(&mut self) -> f64 {
+        self.sys.refresh_processes(ProcessesToUpdate::Some(&[self.pid]), true);
+        self.sys
+            .process(self.pid)
+            .map(|p| p.memory() as f64 / 1_000_000.0) // bytes to MB
+            .unwrap_or(0.0)
+    }
 }
 
 /// Create a test database with N files for benchmarking.
@@ -175,59 +189,63 @@ fn benchmark_cold_start_10k(c: &mut Criterion) {
     group.finish();
 }
 
-/// Memory benchmark: measures RSS during indexing at various scales.
-/// Used to validate README memory claims.
+/// Memory benchmark: reports post-operation RSS samples at various scales.
+///
+/// This is informational only; RSS delta sampling in a long-lived process is not
+/// a reliable measure of peak memory. For README claim validation, use the
+/// `memory_validation` tests or `/usr/bin/time -l` in a fresh process.
 fn benchmark_memory(c: &mut Criterion) {
     let mut group = c.benchmark_group("memory");
     group.sample_size(10); // Memory measurements are stable, fewer samples needed
 
     for num_files in [1000, 5000, 10000] {
-        group.bench_with_input(
-            BenchmarkId::new("index_rss", num_files),
-            &num_files,
-            |b, n| {
-                b.iter_custom(|iters| {
-                    let mut total_duration = std::time::Duration::ZERO;
-                    let mut peak_rss = 0.0f64;
+        group.bench_with_input(BenchmarkId::new("index_rss", num_files), &num_files, |b, n| {
+            let mut rss = RssSampler::new();
+            b.iter_custom(|iters| {
+                let mut total_duration = std::time::Duration::ZERO;
+                let mut max_rss = 0.0f64;
 
-                    for _ in 0..iters {
-                        let rss_before = get_rss_mb();
-                        let start = std::time::Instant::now();
+                for _ in 0..iters {
+                    let start = std::time::Instant::now();
 
-                        let (dir, db) = create_benchmark_db(*n);
-                        let config = IndexerConfig::default();
-                        let mut indexer = Indexer::new(dir.path(), db, config);
-                        let _ = indexer.index_directory();
+                    let (dir, db) = create_benchmark_db(*n);
+                    let config = IndexerConfig::default();
+                    let mut indexer = Indexer::new(dir.path(), db, config);
+                    let _ = indexer.index_directory();
 
-                        total_duration += start.elapsed();
-                        let rss_after = get_rss_mb();
-                        let rss_delta = rss_after - rss_before;
-                        peak_rss = peak_rss.max(rss_delta);
-                    }
+                    total_duration += start.elapsed();
+                    let rss_after = rss.sample_mb();
+                    max_rss = max_rss.max(rss_after);
+                }
 
-                    eprintln!("  [{n} files] RSS delta: {peak_rss:.1} MB");
-                    total_duration
-                });
-            },
-        );
+                eprintln!("  [{n} files] RSS sample after index: {max_rss:.1} MB (not peak)");
+                total_duration
+            });
+        });
     }
 
     // Search-only memory (no indexing, just query)
     group.bench_function("search_rss", |b| {
         let (dir, db) = create_benchmark_db(1000);
         let _indexer = index_files(&dir, db);
-        let rss_baseline = get_rss_mb();
+        let mut rss = RssSampler::new();
+        let rss_baseline = rss.sample_mb();
 
-        b.iter(|| {
-            let db_path = dir.path().join(DB_NAME);
-            let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
-            let _ = db.search("function", false, 50);
-            let rss_current = get_rss_mb();
-            eprintln!(
-                "  Search RSS: {:.1} MB (delta: {:.1} MB)",
-                rss_current,
-                rss_current - rss_baseline
-            );
+        b.iter_custom(|iters| {
+            let mut total_duration = std::time::Duration::ZERO;
+            let mut max_rss = 0.0f64;
+            for _ in 0..iters {
+                let start = std::time::Instant::now();
+                let db_path = dir.path().join(DB_NAME);
+                let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+                let _ = db.search("function", false, 50);
+                total_duration += start.elapsed();
+                let rss_current = rss.sample_mb();
+                max_rss = max_rss.max(rss_current);
+            }
+
+            eprintln!("  Search RSS sample: {max_rss:.1} MB (baseline: {rss_baseline:.1} MB)");
+            total_duration
         });
     });
 

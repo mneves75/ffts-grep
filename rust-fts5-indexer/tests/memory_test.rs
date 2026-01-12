@@ -5,9 +5,10 @@ use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, RefreshKind, System};
 /// Helper to get current process RSS in bytes.
 fn get_rss_bytes() -> u64 {
     let pid = Pid::from_u32(std::process::id());
-    let mut sys =
-        System::new_with_specifics(RefreshKind::nothing().with_processes(ProcessRefreshKind::nothing().with_memory()));
-    sys.refresh_processes(ProcessesToUpdate::All, true);
+    let mut sys = System::new_with_specifics(
+        RefreshKind::nothing().with_processes(ProcessRefreshKind::nothing().with_memory()),
+    );
+    sys.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);
     sys.process(pid).map(|p| p.memory()).unwrap_or(0)
 }
 
@@ -20,11 +21,7 @@ fn test_memory_info_available() {
     assert!(rss > 0, "RSS should be positive, got {}", rss);
 
     // RSS should be < 1GB for a simple test (sanity check)
-    assert!(
-        rss < 1_000_000_000,
-        "RSS suspiciously large: {} bytes",
-        rss
-    );
+    assert!(rss < 1_000_000_000, "RSS suspiciously large: {} bytes", rss);
 
     // RSS should be > 1MB (reasonable minimum for any Rust process)
     assert!(rss > 1_000_000, "RSS suspiciously small: {} bytes", rss);
