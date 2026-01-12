@@ -1,0 +1,41 @@
+name: Release and Update Homebrew
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/}"
+          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Releasing version: ${VERSION}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+
+      - name: Trigger Homebrew tap update
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "Warning: HOMEBREW_TAP_TOKEN secret not set, skipping tap update"
+            exit 0
+          fi
+
+          echo "Triggering homebrew-tap update for version ${VERSION}"
+          gh workflow run bump-formula.yml \
+            --repo mneves75/homebrew-tap \
+            -f version="${VERSION}"
