@@ -112,3 +112,15 @@
 - Decision: Proceed to final report
 - Commands: git commit -m "Add memory validation docs and tests"
 - Open questions: None
+2026-01-12 11:23:33 -0300
+- Step: Commit updated agent notes
+- Result: Commit created: "Update agent notes"
+- Decision: Ensure clean working tree before final response
+- Commands: git add agent-notes.md; git commit -m "Update agent notes"
+- Open questions: None
+2026-01-12 11:26:57 -0300
+- Step: Run full search_bench benchmark suite
+- Result: Benchmarks completed; criterion output captured for search/index/hash/cold_start groups
+- Decision: Update report evidence with benchmark timings
+- Commands: cd rust-fts5-indexer && cargo bench --bench search_bench
+- Open questions: None
