@@ -104,6 +104,14 @@ impl Database {
     /// - The database file cannot be opened or created
     /// - Any PRAGMA setting fails to apply
     pub fn open(db_path: &Path, config: &PragmaConfig) -> Result<Self> {
+        if config.busy_timeout_ms < 0 {
+            return Err(IndexerError::ConfigInvalid {
+                field: "busy_timeout_ms".to_string(),
+                value: config.busy_timeout_ms.to_string(),
+                reason: "must be >= 0".to_string(),
+            });
+        }
+
         let conn = rusqlite::Connection::open(db_path)?;
 
         // Apply PRAGMAs with error context
@@ -181,22 +189,30 @@ impl Database {
 
         // Update each row with extracted filename
         for (id, path) in paths {
-            let filename = Path::new(&path)
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or(&path);
+            let filename = Path::new(&path).file_name().and_then(|n| n.to_str()).unwrap_or(&path);
             self.conn
-                .execute("UPDATE files SET filename = ?1 WHERE id = ?2", rusqlite::params![filename, id])
-                .ok();
+                .execute(
+                    "UPDATE files SET filename = ?1 WHERE id = ?2",
+                    rusqlite::params![filename, id],
+                )
+                .map_err(|e| IndexerError::Database { source: e })?;
         }
 
         // Drop old triggers (will be recreated by init_schema with new column)
-        self.conn.execute("DROP TRIGGER IF EXISTS files_ai", []).ok();
-        self.conn.execute("DROP TRIGGER IF EXISTS files_au", []).ok();
-        self.conn.execute("DROP TRIGGER IF EXISTS files_ad", []).ok();
+        self.conn
+            .execute("DROP TRIGGER IF EXISTS files_ai", [])
+            .map_err(|e| IndexerError::Database { source: e })?;
+        self.conn
+            .execute("DROP TRIGGER IF EXISTS files_au", [])
+            .map_err(|e| IndexerError::Database { source: e })?;
+        self.conn
+            .execute("DROP TRIGGER IF EXISTS files_ad", [])
+            .map_err(|e| IndexerError::Database { source: e })?;
 
         // Drop old FTS5 table (will be recreated by init_schema with 3 columns)
-        self.conn.execute("DROP TABLE IF EXISTS files_fts", []).ok();
+        self.conn
+            .execute("DROP TABLE IF EXISTS files_fts", [])
+            .map_err(|e| IndexerError::Database { source: e })?;
 
         tracing::info!("Schema migration complete - call init_schema() then rebuild_fts_index()");
 
@@ -334,10 +350,7 @@ impl Database {
 
         // Extract filename from path for FTS5 ranking boost
         // e.g., "docs/CLAUDE.md" -> "CLAUDE.md"
-        let filename = Path::new(path)
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or(path);
+        let filename = Path::new(path).file_name().and_then(|n| n.to_str()).unwrap_or(path);
 
         // Lazy invalidation: only update if content changed
         // The ON CONFLICT handles the case where path exists
@@ -417,6 +430,60 @@ impl Database {
         Ok(results)
     }
 
+    /// Search for files where filename CONTAINS the query substring (case-insensitive).
+    ///
+    /// This bypasses FTS5 token matching to enable substring searches.
+    /// FTS5 only matches whole tokens, so "intro" doesn't match "introduction".
+    /// SQL LIKE '%intro%' finds "01-introduction.md" correctly.
+    ///
+    /// Results are ordered by:
+    /// 1. Exact filename match (highest priority)
+    /// 2. Filename starts with query (prefix match)
+    /// 3. Filename length (shorter = more relevant)
+    ///
+    /// # Arguments
+    /// * `query` - Search term (wildcards stripped if present)
+    /// * `limit` - Maximum results to return
+    ///
+    /// # Errors
+    /// Returns `IndexerError::Database` if the query fails.
+    pub fn search_filename_contains(&self, query: &str, limit: u32) -> Result<Vec<String>> {
+        let query = query.trim();
+        if query.is_empty() {
+            return Ok(vec![]);
+        }
+
+        // Strip wildcard if present (from auto-prefix like "01-" → "01*")
+        let search_term = query.trim_end_matches('*');
+        if search_term.is_empty() {
+            return Ok(vec![]);
+        }
+
+        // CONTAINS match with intelligent ordering:
+        // - CASE 0: exact filename match
+        // - CASE 1: filename starts with query (prefix)
+        // - CASE 2: filename contains query anywhere
+        // Secondary sort by filename length (shorter = more specific match)
+        let sql = "SELECT path FROM files
+                   WHERE filename LIKE '%' || ?1 || '%' COLLATE NOCASE
+                   ORDER BY
+                       CASE WHEN LOWER(filename) = LOWER(?1) THEN 0
+                            WHEN LOWER(filename) LIKE LOWER(?1) || '%' THEN 1
+                            ELSE 2 END,
+                       length(filename)
+                   LIMIT ?2";
+
+        let mut stmt = self.conn.prepare_cached(sql).map_err(|e| IndexerError::Database { source: e })?;
+
+        let paths: Vec<String> = stmt
+            .query_map(rusqlite::params![search_term, limit], |row| row.get::<_, String>(0))
+            .map_err(|e| IndexerError::Database { source: e })?
+            .filter_map(std::result::Result::ok)
+            .collect();
+
+        Ok(paths)
+    }
+
     /// Get all indexed file paths.
     ///
     /// # Errors
@@ -456,13 +523,12 @@ impl Database {
     /// Optimize FTS5 index by merging b-trees.
     ///
     /// # Errors
-    /// Always returns `Ok(())` - errors are silently ignored as optimization is non-critical.
+    /// Returns `IndexerError::Database` if the FTS5 optimize command fails.
     pub fn optimize_fts(&self) -> Result<()> {
         // 'optimize' command merges FTS5 segment b-trees
-        self.conn.execute("INSERT INTO files_fts(files_fts) VALUES('optimize')", []).ok(); // Non-fatal, ignore errors
-
-        // Also run VACUUM to reclaim space (async-friendly)
-        self.conn.execute("VACUUM files", []).ok();
+        self.conn
+            .execute("INSERT INTO files_fts(files_fts) VALUES('optimize')", [])
+            .map_err(|e| IndexerError::Database { source: e })?;
 
         Ok(())
     }
@@ -988,6 +1054,44 @@ mod tests {
     }
 
     #[test]
+    fn test_busy_timeout_negative_rejected() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join("test.db");
+        let config = PragmaConfig { busy_timeout_ms: -1, ..Default::default() };
+
+        let result = Database::open(&db_path, &config);
+        assert!(matches!(
+            result,
+            Err(IndexerError::ConfigInvalid { field, .. }) if field == "busy_timeout_ms"
+        ));
+        assert!(!db_path.exists());
+    }
+
+    #[test]
+    fn test_migrate_schema_propagates_errors() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join("test.db");
+        let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+
+        // Create a legacy schema (no filename column).
+        db.conn()
+            .execute(
+                "CREATE TABLE files (
+                id INTEGER PRIMARY KEY,
+                path TEXT UNIQUE NOT NULL
+            )",
+                [],
+            )
+            .unwrap();
+
+        // Force write operations to fail.
+        db.conn().pragma_update(None, "query_only", "ON").unwrap();
+
+        let result = db.migrate_schema();
+        assert!(matches!(result, Err(IndexerError::Database { .. })));
+    }
+
+    #[test]
     fn test_open_readonly() {
         let dir = tempdir().unwrap();
         let db_path = dir.path().join(DB_NAME);
@@ -1120,5 +1224,127 @@ mod tests {
         assert!(missing.contains(&"table: files_fts"));
         assert!(missing.contains(&"trigger: files_au"));
         assert!(missing.contains(&"index: idx_files_mtime"));
+    }
+
+    // ============================================
+    // search_filename_contains() tests
+    // ============================================
+
+    #[test]
+    fn test_search_filename_contains_basic() {
+        let (_dir, db) = create_test_db();
+
+        db.upsert_file("docs/intro.md", "content", 0, 7).unwrap();
+        db.upsert_file("src/main.rs", "content", 0, 7).unwrap();
+
+        let results = db.search_filename_contains("intro", 10).unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0], "docs/intro.md");
+    }
+
+    #[test]
+    fn test_search_filename_contains_substring() {
+        // This is the KEY test: "intro" should find "01-introduction.md"
+        let (_dir, db) = create_test_db();
+
+        db.upsert_file("docs/learn/01-introduction.md", "chapter one", 0, 12).unwrap();
+        db.upsert_file("other.md", "unrelated", 0, 9).unwrap();
+
+        let results = db.search_filename_contains("intro", 10).unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0], "docs/learn/01-introduction.md");
+    }
+
+    #[test]
+    fn test_search_filename_contains_case_insensitive() {
+        let (_dir, db) = create_test_db();
+
+        db.upsert_file("CLAUDE.md", "content", 0, 7).unwrap();
+
+        // Lowercase query should find uppercase filename
+        let results = db.search_filename_contains("claude", 10).unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0], "CLAUDE.md");
+    }
+
+    #[test]
+    fn test_search_filename_contains_exact_match_priority() {
+        let (_dir, db) = create_test_db();
+
+        // Exact match
+        db.upsert_file("config.rs", "a", 0, 1).unwrap();
+        // Longer substring match
+        db.upsert_file("my-config-utils.rs", "b", 0, 1).unwrap();
+
+        let results = db.search_filename_contains("config", 10).unwrap();
+        assert_eq!(results.len(), 2);
+        // Exact match should come first
+        assert_eq!(results[0], "config.rs");
+    }
+
+    #[test]
+    fn test_search_filename_contains_prefix_priority() {
+        let (_dir, db) = create_test_db();
+
+        // Prefix match
+        db.upsert_file("config-local.rs", "a", 0, 1).unwrap();
+        // Contains but not prefix
+        db.upsert_file("my-config.rs", "b", 0, 1).unwrap();
+
+        let results = db.search_filename_contains("config", 10).unwrap();
+        assert_eq!(results.len(), 2);
+        // Prefix match should come before contains-only match
+        assert_eq!(results[0], "config-local.rs");
+    }
+
+    #[test]
+    fn test_search_filename_contains_shorter_first() {
+        let (_dir, db) = create_test_db();
+
+        // Both are contains matches, shorter should come first
+        db.upsert_file("my-intro-file.md", "a", 0, 1).unwrap();
+        db.upsert_file("intro.md", "b", 0, 1).unwrap();
+
+        let results = db.search_filename_contains("intro", 10).unwrap();
+        assert_eq!(results.len(), 2);
+        // Shorter filename should come first (more specific match)
+        assert_eq!(results[0], "intro.md");
+    }
+
+    #[test]
+    fn test_search_filename_contains_empty_query() {
+        let (_dir, db) = create_test_db();
+
+        db.upsert_file("test.rs", "content", 0, 7).unwrap();
+
+        let results = db.search_filename_contains("", 10).unwrap();
+        assert!(results.is_empty());
+
+        let results = db.search_filename_contains("   ", 10).unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_search_filename_contains_strips_wildcard() {
+        let (_dir, db) = create_test_db();
+
+        db.upsert_file("01-introduction.md", "content", 0, 7).unwrap();
+
+        // Query with wildcard (from auto-prefix) should still work
+        let results = db.search_filename_contains("01*", 10).unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0], "01-introduction.md");
+    }
+
+    #[test]
+    fn test_search_filename_contains_limit() {
+        let (_dir, db) = create_test_db();
+
+        for i in 0..10 {
+            db.upsert_file(&format!("test{i}.rs"), "content", 0, 7).unwrap();
+        }
+
+        let results = db.search_filename_contains("test", 3).unwrap();
+        assert_eq!(results.len(), 3);
     }
 }
