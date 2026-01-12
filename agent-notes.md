@@ -286,3 +286,6 @@
 
 [2026-01-12 20:54:38 -0300] Committed and pushed changes.
 - Commands: git add .; git commit -m "chore: add ci, toolchain, and memory validation"; git push.
+
+[2026-01-12 20:55:05 -0300] Committed and pushed agent-notes.md.
+- Commands: git add agent-notes.md; git commit -m "chore: update agent notes"; git push.
