@@ -7,6 +7,12 @@ use crate::{
     health::find_project_root,
 };
 
+#[cfg(target_os = "macos")]
+const DEFAULT_MMAP_SIZE: i64 = 0;
+
+#[cfg(not(target_os = "macos"))]
+const DEFAULT_MMAP_SIZE: i64 = 256 * 1024 * 1024;
+
 /// Output format for search results.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, ValueEnum)]
 pub enum OutputFormat {
@@ -60,12 +66,16 @@ pub struct Cli {
     #[arg(long, env = "CLAUDE_PROJECT_DIR")]
     pub project_dir: Option<PathBuf>,
 
+    /// Follow symlinks while indexing (disabled by default for safety)
+    #[arg(long)]
+    pub follow_symlinks: bool,
+
     /// `SQLite` cache size in `KB` (negative) or `pages` (positive)
     #[arg(long, default_value = "-32000", value_parser = validate_cache_size)]
     pub pragma_cache_size: i64,
 
     /// Memory-mapped I/O size in bytes (0 = disabled on macOS)
-    #[arg(long, default_value = "0", value_parser = validate_mmap_size)]
+    #[arg(long, default_value_t = DEFAULT_MMAP_SIZE, value_parser = validate_mmap_size)]
     pub pragma_mmap_size: i64,
 
     /// Database page size in bytes (must be power of 2, 512-65536)
@@ -139,7 +149,7 @@ fn validate_cache_size(s: &str) -> std::result::Result<i64, String> {
     }
 }
 
-/// Validates `mmap_size`: must be `0` or power of 2 up to `256MB`.
+/// Validates `mmap_size`: must be between `0` and `256MB`.
 fn validate_mmap_size(s: &str) -> std::result::Result<i64, String> {
     const MAX_MMAP: i64 = 256 * 1024 * 1024; // 256MB max on Linux
 
@@ -279,6 +289,7 @@ impl Cli {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::db::PragmaConfig;
     use serial_test::serial;
     use std::path::PathBuf;
 
@@ -489,6 +500,12 @@ mod tests {
     }
 
     #[test]
+    fn test_default_mmap_size_matches_platform() {
+        let cli = Cli::parse_from([BIN_NAME]);
+        assert_eq!(cli.pragma_mmap_size, PragmaConfig::default_mmap_size());
+    }
+
+    #[test]
     fn test_wants_index() {
         let cli = Cli::parse_from([BIN_NAME, "index"]);
         assert!(cli.wants_index());
@@ -531,10 +548,19 @@ mod tests {
     fn test_default_values() {
         let cli = Cli::parse_from([BIN_NAME]);
         assert_eq!(cli.pragma_cache_size, -32000); // 32MB default
-        assert_eq!(cli.pragma_mmap_size, 0);
+        assert_eq!(cli.pragma_mmap_size, PragmaConfig::default_mmap_size());
         assert_eq!(cli.pragma_page_size, 4096);
         assert_eq!(cli.pragma_busy_timeout, 5000);
         assert_eq!(cli.pragma_synchronous, "NORMAL");
+    }
+
+    #[test]
+    fn test_follow_symlinks_flag() {
+        let cli = Cli::parse_from([BIN_NAME]);
+        assert!(!cli.follow_symlinks);
+
+        let cli = Cli::parse_from([BIN_NAME, "--follow-symlinks"]);
+        assert!(cli.follow_symlinks);
     }
 
     #[test]

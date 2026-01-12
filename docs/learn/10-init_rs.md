@@ -29,7 +29,7 @@ See `init.rs:23-25`:
 /// Required gitignore entries for ffts-grep.
 #[must_use]
 pub const fn gitignore_entries() -> [&'static str; 4] {
-    [DB_NAME, DB_SHM_NAME, DB_WAL_NAME, DB_TMP_NAME]
+    [DB_NAME, DB_SHM_NAME, DB_WAL_NAME, DB_TMP_GLOB]
 }
 ```
 
@@ -37,7 +37,7 @@ This returns the 4 files that need to be ignored:
 - `.ffts-index.db` — Main database
 - `.ffts-index.db-shm` — Shared memory file
 - `.ffts-index.db-wal` — Write-Ahead Log
-- `.ffts-index.db-tmp` — Temporary file
+- `.ffts-index.db.tmp*` — Temporary files (includes unique suffix variants)
 
 ---
 
@@ -158,8 +158,8 @@ pub fn update_gitignore(project_dir: &Path) -> Result<GitignoreResult> {
     file.flush()?;
     drop(file);
 
-    // Atomic rename
-    fs::rename(&tmp_path, &gitignore_path)?;
+    // Atomic rename (Windows uses MoveFileExW replace semantics)
+    atomic_replace(&tmp_path, &gitignore_path)?;
 
     let count = missing.len();
     if file_existed {
@@ -177,8 +177,8 @@ pub fn update_gitignore(project_dir: &Path) -> Result<GitignoreResult> {
 let mut file = fs::File::create(&tmp_path)?;
 file.write_all(new_content.as_bytes())?;
 
-// Atomic rename
-fs::rename(&tmp_path, &gitignore_path)?;
+// Atomic rename (Windows uses MoveFileExW replace semantics)
+atomic_replace(&tmp_path, &gitignore_path)?;
 ```
 
 This prevents corruption if the write is interrupted.

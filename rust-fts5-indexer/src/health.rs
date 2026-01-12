@@ -49,7 +49,7 @@ use crate::db::{Database, PragmaConfig};
 use crate::doctor::EXPECTED_APPLICATION_ID;
 use crate::error::Result;
 use crate::indexer::{IndexStats, Indexer, IndexerConfig};
-use crate::{init, DB_NAME, DB_TMP_SUFFIX};
+use crate::{DB_NAME, DB_TMP_SUFFIX, init};
 
 /// Database health status for auto-init decisions.
 ///
@@ -208,14 +208,8 @@ pub fn find_project_root(start_dir: &Path) -> ProjectRoot {
 
     // Return git root if found, otherwise fallback to start_dir
     match git_root {
-        Some(path) => ProjectRoot {
-            path,
-            method: DetectionMethod::GitRepository,
-        },
-        None => ProjectRoot {
-            path: start_dir.to_path_buf(),
-            method: DetectionMethod::Fallback,
-        },
+        Some(path) => ProjectRoot { path, method: DetectionMethod::GitRepository },
+        None => ProjectRoot { path: start_dir.to_path_buf(), method: DetectionMethod::Fallback },
     }
 }
 
@@ -283,7 +277,7 @@ pub fn check_health_fast(project_dir: &Path) -> DatabaseHealth {
 ///
 /// # Atomicity
 ///
-/// 1. Creates database at `{DB_NAME}.tmp`
+/// 1. Creates database at `{DB_NAME}{DB_TMP_SUFFIX}.{unique_suffix}`
 /// 2. Initializes schema and indexes files
 /// 3. Checkpoints WAL to main file
 /// 4. Atomically renames to `{DB_NAME}`
@@ -300,6 +294,18 @@ pub fn check_health_fast(project_dir: &Path) -> DatabaseHealth {
 /// Returns `IndexerError` if database creation or indexing fails.
 /// Race condition (another process won) is handled gracefully, not as error.
 pub fn auto_init(project_dir: &Path, config: &PragmaConfig, quiet: bool) -> Result<IndexStats> {
+    auto_init_with_config(project_dir, config, IndexerConfig::default(), quiet)
+}
+
+/// Auto-initialize database with explicit indexer configuration.
+///
+/// Use this to override indexing defaults (e.g., symlink handling).
+pub fn auto_init_with_config(
+    project_dir: &Path,
+    config: &PragmaConfig,
+    indexer_config: IndexerConfig,
+    quiet: bool,
+) -> Result<IndexStats> {
     // Update gitignore first (idempotent operation)
     let _ = init::update_gitignore(project_dir);
 
@@ -319,15 +325,16 @@ pub fn auto_init(project_dir: &Path, config: &PragmaConfig, quiet: bool) -> Resu
 
     // Clean up any stale temp file from previous failed attempt (same process/thread)
     let _ = fs::remove_file(&tmp_path);
-    let _ = fs::remove_file(project_dir.join(format!("{DB_NAME}{DB_TMP_SUFFIX}.{unique_suffix}-shm")));
-    let _ = fs::remove_file(project_dir.join(format!("{DB_NAME}{DB_TMP_SUFFIX}.{unique_suffix}-wal")));
+    let _ =
+        fs::remove_file(project_dir.join(format!("{DB_NAME}{DB_TMP_SUFFIX}.{unique_suffix}-shm")));
+    let _ =
+        fs::remove_file(project_dir.join(format!("{DB_NAME}{DB_TMP_SUFFIX}.{unique_suffix}-wal")));
 
     // Create database in temp location (atomic pattern)
     let db = Database::open(&tmp_path, config)?;
     db.init_schema()?;
 
     // Index files
-    let indexer_config = IndexerConfig::default();
     let mut indexer = Indexer::new(project_dir, db, indexer_config);
     let stats = indexer.index_directory()?;
 
@@ -352,11 +359,9 @@ pub fn auto_init(project_dir: &Path, config: &PragmaConfig, quiet: bool) -> Resu
     // - log: frames in WAL before checkpoint
     // - checkpointed: frames moved to database file
     let checkpoint_result: std::result::Result<(i64, i64, i64), _> =
-        indexer.db().conn().query_row(
-            "PRAGMA wal_checkpoint(TRUNCATE)",
-            [],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-        );
+        indexer.db().conn().query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+        });
 
     // Close the database connection before rename to release locks
     drop(indexer);
@@ -395,8 +400,12 @@ pub fn auto_init(project_dir: &Path, config: &PragmaConfig, quiet: bool) -> Resu
     // Helper to clean up temp files on failure/skip
     let cleanup_temp = || {
         let _ = fs::remove_file(&tmp_path);
-        let _ = fs::remove_file(project_dir.join(format!("{DB_NAME}{DB_TMP_SUFFIX}.{unique_suffix}-shm")));
-        let _ = fs::remove_file(project_dir.join(format!("{DB_NAME}{DB_TMP_SUFFIX}.{unique_suffix}-wal")));
+        let _ = fs::remove_file(
+            project_dir.join(format!("{DB_NAME}{DB_TMP_SUFFIX}.{unique_suffix}-shm")),
+        );
+        let _ = fs::remove_file(
+            project_dir.join(format!("{DB_NAME}{DB_TMP_SUFFIX}.{unique_suffix}-wal")),
+        );
     };
 
     if !checkpoint_ok {
@@ -435,8 +444,12 @@ pub fn auto_init(project_dir: &Path, config: &PragmaConfig, quiet: bool) -> Resu
             tracing::debug!(error = %e, "Rename failed, using existing database");
         } else {
             // Rename succeeded - only clean up WAL files (main file was renamed)
-            let _ = fs::remove_file(project_dir.join(format!("{DB_NAME}{DB_TMP_SUFFIX}.{unique_suffix}-shm")));
-            let _ = fs::remove_file(project_dir.join(format!("{DB_NAME}{DB_TMP_SUFFIX}.{unique_suffix}-wal")));
+            let _ = fs::remove_file(
+                project_dir.join(format!("{DB_NAME}{DB_TMP_SUFFIX}.{unique_suffix}-shm")),
+            );
+            let _ = fs::remove_file(
+                project_dir.join(format!("{DB_NAME}{DB_TMP_SUFFIX}.{unique_suffix}-wal")),
+            );
         }
     }
 
@@ -467,6 +480,16 @@ pub fn backup_and_reinit(
     config: &PragmaConfig,
     quiet: bool,
 ) -> Result<IndexStats> {
+    backup_and_reinit_with_config(project_dir, config, IndexerConfig::default(), quiet)
+}
+
+/// Backup corrupted database and reinitialize with explicit indexer configuration.
+pub fn backup_and_reinit_with_config(
+    project_dir: &Path,
+    config: &PragmaConfig,
+    indexer_config: IndexerConfig,
+    quiet: bool,
+) -> Result<IndexStats> {
     let db_path = project_dir.join(DB_NAME);
 
     // Create timestamped backup filename
@@ -489,7 +512,7 @@ pub fn backup_and_reinit(
     let _ = fs::remove_file(project_dir.join(format!("{DB_NAME}-wal")));
 
     // Perform fresh initialization
-    auto_init(project_dir, config, quiet)
+    auto_init_with_config(project_dir, config, indexer_config, quiet)
 }
 
 #[cfg(test)]
@@ -597,8 +620,7 @@ mod tests {
 
         // Create SQLite database with different application_id
         let conn = rusqlite::Connection::open(root.path().join(DB_NAME)).unwrap();
-        conn.pragma_update(None, "application_id", 0x1234_5678_i32)
-            .unwrap();
+        conn.pragma_update(None, "application_id", 0x1234_5678_i32).unwrap();
         drop(conn);
 
         // Create .git in project subdirectory
@@ -655,14 +677,9 @@ mod tests {
 
         // Create database with wrong application ID
         let conn = rusqlite::Connection::open(&db_path).unwrap();
-        conn.pragma_update(None, "application_id", 0x1234_5678_i32)
-            .unwrap();
+        conn.pragma_update(None, "application_id", 0x1234_5678_i32).unwrap();
         // Create minimal schema so it doesn't fail on schema check
-        conn.execute(
-            "CREATE TABLE files (path TEXT PRIMARY KEY, content TEXT)",
-            [],
-        )
-        .unwrap();
+        conn.execute("CREATE TABLE files (path TEXT PRIMARY KEY, content TEXT)", []).unwrap();
         drop(conn);
 
         let health = check_health_fast(dir.path());
@@ -695,14 +712,9 @@ mod tests {
 
         // Create database with correct app ID but missing schema
         let conn = rusqlite::Connection::open(&db_path).unwrap();
-        conn.pragma_update(None, "application_id", EXPECTED_APPLICATION_ID as i32)
-            .unwrap();
+        conn.pragma_update(None, "application_id", EXPECTED_APPLICATION_ID as i32).unwrap();
         // Create only files table, missing FTS, triggers, indexes
-        conn.execute(
-            "CREATE TABLE files (path TEXT PRIMARY KEY, content TEXT)",
-            [],
-        )
-        .unwrap();
+        conn.execute("CREATE TABLE files (path TEXT PRIMARY KEY, content TEXT)", []).unwrap();
         drop(conn);
 
         let health = check_health_fast(dir.path());
@@ -816,6 +828,31 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn test_auto_init_with_config_follows_symlinks() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempdir().unwrap();
+        let real_dir = dir.path().join("real");
+        fs::create_dir_all(&real_dir).unwrap();
+        fs::write(real_dir.join("inner.rs"), "fn inner() {}").unwrap();
+        let link_dir = dir.path().join("linkdir");
+        symlink(&real_dir, &link_dir).unwrap();
+
+        let indexer_config = IndexerConfig { follow_symlinks: true, ..Default::default() };
+        let stats =
+            auto_init_with_config(dir.path(), &PragmaConfig::default(), indexer_config, true)
+                .unwrap();
+
+        assert!(stats.files_indexed >= 1);
+        assert!(dir.path().join(DB_NAME).exists());
+
+        let db = Database::open(&dir.path().join(DB_NAME), &PragmaConfig::default()).unwrap();
+        let files = db.get_all_files(10).unwrap();
+        assert!(files.contains(&"linkdir/inner.rs".to_string()));
+    }
+
     #[test]
     fn test_auto_init_skips_if_database_exists() {
         // Test that auto_init doesn't overwrite existing database
@@ -854,7 +891,14 @@ mod tests {
         fs::write(dir.path().join(DB_NAME), b"corrupted").unwrap();
         fs::write(dir.path().join("test.rs"), "content").unwrap();
 
-        let _ = backup_and_reinit(dir.path(), &PragmaConfig::default(), true).unwrap();
+        let indexer_config = IndexerConfig::default();
+        let _ = backup_and_reinit_with_config(
+            dir.path(),
+            &PragmaConfig::default(),
+            indexer_config,
+            true,
+        )
+        .unwrap();
 
         // Backup should exist
         let backups: Vec<_> = fs::read_dir(dir.path())
@@ -901,10 +945,7 @@ mod tests {
 
         // 100 checks should complete in <500ms (conservative for CI variability)
         // Production target: <100μs each = <10ms for 100 iterations
-        assert!(
-            elapsed.as_millis() < 500,
-            "Health check too slow: {elapsed:?} for 100 iterations"
-        );
+        assert!(elapsed.as_millis() < 500, "Health check too slow: {elapsed:?} for 100 iterations");
     }
 
     #[test]

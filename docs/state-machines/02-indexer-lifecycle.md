@@ -91,23 +91,22 @@ batch_count = TRANSACTION_THRESHOLD; // 50
 ```mermaid
 flowchart TD
     A[process_entry] --> B{is_database_file?}
-    B -->|yes .db/.sqlite/-shm/-wal/.db.tmp| C[return Ok false]
-    B -->|no| D{is_directory?}
+    B -->|yes .db/.sqlite/-shm/-wal/.tmp*| C[return Ok false]
+    B -->|no| D{is_symlink?}
 
-    D -->|yes| C
-    D -->|no| E{is_symlink?}
-
-    E -->|yes| F{config.follow_symlinks?}
-    F -->|false| G[files_skipped++]
+    D -->|yes| E{config.follow_symlinks?}
+    E -->|false| G[files_skipped++]
     G --> C
-    F -->|true| H[fs::canonicalize]
+    E -->|true| H[fs::canonicalize]
     H -->|Err| G
     H -->|Ok resolved| I{is_within_root?}
     I -->|no| J[warn + files_skipped++]
     J --> C
     I -->|yes| K
 
-    E -->|no| K{metadata.len > max_file_size?}
+    D -->|no| L{is_directory?}
+    L -->|yes| C
+    L -->|no| K{metadata.len > max_file_size?}
     K -->|yes 1MB default| G
     K -->|no| L[read_file_content]
 
@@ -135,7 +134,7 @@ sequenceDiagram
     CLI->>TMP: Database::open(tmp_path)
     CLI->>TMP: init_schema()
     CLI->>TMP: Indexer::new() + index_directory()
-    CLI->>TMP: optimize_fts()
+    Note over TMP: index_directory runs ANALYZE + PRAGMA optimize + FTS5 optimize
     CLI->>TMP: PRAGMA wal_checkpoint(TRUNCATE)
     Note over TMP: Log checkpoint stats (busy, log, checkpointed)
 
@@ -162,5 +161,5 @@ sequenceDiagram
 |-----------|---------|---------|
 | `max_file_size` | 1MB | Skip files larger than this |
 | `batch_size` | 500 | Files per transaction commit |
-| `follow_symlinks` | true | Resolve and follow symlinks |
+| `follow_symlinks` | false | Resolve and follow symlinks (opt-in) |
 | `TRANSACTION_THRESHOLD` | 50 | Files before starting transaction |

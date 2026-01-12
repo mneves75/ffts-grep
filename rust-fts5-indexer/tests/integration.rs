@@ -5,7 +5,7 @@ use ffts_indexer::error::IndexerError;
 use ffts_indexer::indexer::{Indexer, IndexerConfig, atomic_reindex};
 use ffts_indexer::init::{GitignoreResult, check_gitignore, gitignore_entries, update_gitignore};
 use ffts_indexer::search::{SearchConfig, Searcher};
-use ffts_indexer::{DB_NAME, DB_SHM_NAME, DB_TMP_NAME, DB_WAL_NAME, DB_WAL_SUFFIX};
+use ffts_indexer::{DB_NAME, DB_SHM_NAME, DB_TMP_GLOB, DB_WAL_NAME, DB_WAL_SUFFIX};
 use rusqlite::ErrorCode;
 use std::fs;
 use std::thread;
@@ -765,7 +765,7 @@ fn test_check_gitignore_detects_missing() {
     assert_eq!(missing.len(), 3);
     assert!(missing.contains(&DB_SHM_NAME));
     assert!(missing.contains(&DB_WAL_NAME));
-    assert!(missing.contains(&DB_TMP_NAME));
+    assert!(missing.contains(&DB_TMP_GLOB));
 }
 
 /// Verify `check_gitignore` returns empty when complete.
@@ -948,7 +948,10 @@ fn test_conditional_transaction_threshold_behavior() {
 
     assert_eq!(stats_large.files_indexed, 100);
     // Large batch should complete quickly due to transaction batching
-    assert!(duration_large.as_secs() < 5, "Large batch should be fast with batching: {duration_large:?}");
+    assert!(
+        duration_large.as_secs() < 5,
+        "Large batch should be fast with batching: {duration_large:?}"
+    );
 }
 
 /// Verify health check state machine correctly identifies all DatabaseHealth variants
@@ -957,8 +960,8 @@ fn test_conditional_transaction_threshold_behavior() {
 /// This tests the health check flow that gates search operations.
 #[test]
 fn test_health_state_machine_transitions() {
-    use ffts_indexer::health::{check_health_fast, DatabaseHealth};
     use ffts_indexer::doctor::EXPECTED_APPLICATION_ID;
+    use ffts_indexer::health::{DatabaseHealth, check_health_fast};
 
     // State 1: Missing - no database file
     let dir_missing = tempdir().unwrap();
@@ -967,7 +970,8 @@ fn test_health_state_machine_transitions() {
 
     // State 2: Empty - schema exists but no files
     let dir_empty = tempdir().unwrap();
-    let db_empty = Database::open(&dir_empty.path().join(DB_NAME), &PragmaConfig::default()).unwrap();
+    let db_empty =
+        Database::open(&dir_empty.path().join(DB_NAME), &PragmaConfig::default()).unwrap();
     db_empty.init_schema().unwrap();
     drop(db_empty);
     assert_eq!(check_health_fast(dir_empty.path()), DatabaseHealth::Empty);
@@ -975,7 +979,8 @@ fn test_health_state_machine_transitions() {
 
     // State 3: Healthy - schema + content exists
     let dir_healthy = tempdir().unwrap();
-    let db_healthy = Database::open(&dir_healthy.path().join(DB_NAME), &PragmaConfig::default()).unwrap();
+    let db_healthy =
+        Database::open(&dir_healthy.path().join(DB_NAME), &PragmaConfig::default()).unwrap();
     db_healthy.init_schema().unwrap();
     db_healthy.upsert_file("test.rs", "fn main() {}", 0, 12).unwrap();
     drop(db_healthy);
@@ -1064,7 +1069,8 @@ fn test_lazy_invalidation_via_db_layer() {
     db.upsert_file("test.rs", content, 0, content.len() as i64).unwrap();
 
     // Get initial indexed_at
-    let indexed_at1: i64 = db.conn()
+    let indexed_at1: i64 = db
+        .conn()
         .query_row("SELECT indexed_at FROM files WHERE path = 'test.rs'", [], |row| row.get(0))
         .unwrap();
 
@@ -1075,11 +1081,15 @@ fn test_lazy_invalidation_via_db_layer() {
     db.upsert_file("test.rs", content, 1, content.len() as i64).unwrap();
 
     // indexed_at should NOT change when content is same (hash matches)
-    let indexed_at2: i64 = db.conn()
+    let indexed_at2: i64 = db
+        .conn()
         .query_row("SELECT indexed_at FROM files WHERE path = 'test.rs'", [], |row| row.get(0))
         .unwrap();
 
-    assert_eq!(indexed_at1, indexed_at2, "Lazy invalidation should skip write when content is unchanged");
+    assert_eq!(
+        indexed_at1, indexed_at2,
+        "Lazy invalidation should skip write when content is unchanged"
+    );
 
     // Wait again
     thread::sleep(std::time::Duration::from_secs(1));
@@ -1088,7 +1098,8 @@ fn test_lazy_invalidation_via_db_layer() {
     let new_content = "modified content triggers update";
     db.upsert_file("test.rs", new_content, 2, new_content.len() as i64).unwrap();
 
-    let indexed_at3: i64 = db.conn()
+    let indexed_at3: i64 = db
+        .conn()
         .query_row("SELECT indexed_at FROM files WHERE path = 'test.rs'", [], |row| row.get(0))
         .unwrap();
 
@@ -1136,9 +1147,12 @@ fn test_doctor_10_check_pipeline() {
 
     for (i, expected) in expected_names.iter().enumerate() {
         assert_eq!(
-            checks[i].name, *expected,
+            checks[i].name,
+            *expected,
             "Check {} should be '{}', got '{}'",
-            i + 1, expected, checks[i].name
+            i + 1,
+            expected,
+            checks[i].name
         );
     }
 
@@ -1164,8 +1178,12 @@ fn test_exit_code_values() {
 
     // Verify distinct values
     let codes = [
-        ExitCode::Ok, ExitCode::Software, ExitCode::DataErr,
-        ExitCode::IoErr, ExitCode::NoInput, ExitCode::NoPerm,
+        ExitCode::Ok,
+        ExitCode::Software,
+        ExitCode::DataErr,
+        ExitCode::IoErr,
+        ExitCode::NoInput,
+        ExitCode::NoPerm,
     ];
     for (i, a) in codes.iter().enumerate() {
         for (j, b) in codes.iter().enumerate() {
@@ -1206,7 +1224,8 @@ fn test_filename_boosts_search_ranking() {
 
     // CLAUDE.md (filename match) should rank higher than path-only or content-only matches
     assert_eq!(
-        results[0].path, "CLAUDE.md",
+        results[0].path,
+        "CLAUDE.md",
         "File with 'CLAUDE' in filename should rank first, got: {:?}",
         results.iter().map(|r| &r.path).collect::<Vec<_>>()
     );
@@ -1234,7 +1253,8 @@ fn test_filename_exact_match_priority() {
 
     // config.rs should rank highest (exact filename match)
     assert_eq!(
-        results[0].path, "config.rs",
+        results[0].path,
+        "config.rs",
         "Exact filename 'config.rs' should rank first, got: {:?}",
         results.iter().map(|r| &r.path).collect::<Vec<_>>()
     );
@@ -1264,7 +1284,8 @@ fn test_schema_migration_preserves_data() {
                 content TEXT
             )",
             [],
-        ).unwrap();
+        )
+        .unwrap();
 
         // Old FTS5 with only 2 columns
         conn.execute(
@@ -1275,7 +1296,8 @@ fn test_schema_migration_preserves_data() {
                 tokenize='porter unicode61'
             )",
             [],
-        ).unwrap();
+        )
+        .unwrap();
 
         // Old triggers
         conn.execute(
@@ -1283,19 +1305,22 @@ fn test_schema_migration_preserves_data() {
                 INSERT INTO files_fts(rowid, path, content) VALUES (new.id, new.path, new.content);
             END",
             [],
-        ).unwrap();
+        )
+        .unwrap();
 
         // Insert test data
         conn.execute(
             "INSERT INTO files (path, content_hash, mtime, size, indexed_at, content)
              VALUES ('docs/CLAUDE.md', 'hash1', 0, 10, 0, 'test content')",
             [],
-        ).unwrap();
+        )
+        .unwrap();
         conn.execute(
             "INSERT INTO files (path, content_hash, mtime, size, indexed_at, content)
              VALUES ('README.md', 'hash2', 0, 15, 0, 'readme content')",
             [],
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     // Open with new code and run migration
@@ -1309,7 +1334,8 @@ fn test_schema_migration_preserves_data() {
     assert_eq!(count, 2, "Migration should preserve all files");
 
     // Verify filenames were extracted
-    let filename: String = db.conn()
+    let filename: String = db
+        .conn()
         .query_row("SELECT filename FROM files WHERE path = 'docs/CLAUDE.md'", [], |row| row.get(0))
         .unwrap();
     assert_eq!(filename, "CLAUDE.md", "Migration should extract filename from path");

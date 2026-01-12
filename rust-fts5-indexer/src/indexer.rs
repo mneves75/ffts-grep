@@ -7,7 +7,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::db::Database;
 use crate::error::{IndexerError, Result};
-use crate::{DB_NAME, DB_SHM_SUFFIX, DB_TMP_SUFFIX, DB_WAL_SUFFIX};
+use crate::{DB_NAME, DB_SHM_SUFFIX, DB_TMP_NAME, DB_TMP_SUFFIX, DB_WAL_SUFFIX};
 #[cfg(windows)]
 use std::os::windows::ffi::OsStrExt;
 
@@ -18,7 +18,7 @@ pub struct IndexerConfig {
     pub max_file_size: u64,
     /// Files per transaction batch
     pub batch_size: usize,
-    /// Follow symlinks (unsafe by default)
+    /// Follow symlinks (disabled by default)
     pub follow_symlinks: bool,
 }
 
@@ -27,7 +27,7 @@ impl Default for IndexerConfig {
         Self {
             max_file_size: 1024 * 1024, // 1MB
             batch_size: 500,
-            follow_symlinks: true,
+            follow_symlinks: false,
         }
     }
 }
@@ -102,6 +102,7 @@ impl Indexer {
         let walk = WalkBuilder::new(&self.root)
             .standard_filters(true) // Respect .gitignore
             .same_file_system(true) // Prevent crossing filesystems
+            .follow_links(self.config.follow_symlinks)
             .build();
 
         let mut stats = IndexStats::default();
@@ -190,36 +191,46 @@ impl Indexer {
             return Ok(false);
         }
 
-        // Skip directories (only index files)
-        if entry.file_type().is_some_and(|ft| ft.is_dir()) {
-            return Ok(false);
-        }
+        // Check if it's a symlink (symlink_metadata avoids following links).
+        let is_symlink = match fs::symlink_metadata(path) {
+            Ok(metadata) => metadata.file_type().is_symlink(),
+            Err(e) => {
+                tracing::warn!(
+                    path = %path.display(),
+                    error = %e,
+                    "Failed to read symlink metadata"
+                );
+                stats.files_skipped += 1;
+                return Ok(false);
+            }
+        };
 
-        // Check if it's a symlink
-        if let Some(ft) = entry.file_type() {
-            if ft.is_symlink() {
-                // Check if symlink escapes root
-                if !self.config.follow_symlinks {
-                    stats.files_skipped += 1;
-                    return Ok(false); // Skip symlinks when disabled
-                }
+        if is_symlink {
+            if !self.config.follow_symlinks {
+                stats.files_skipped += 1;
+                return Ok(false);
+            }
 
-                // Resolve symlink and verify it's within root
-                if let Ok(resolved) = fs::canonicalize(path) {
-                    if !self.is_within_root(&resolved) {
-                        tracing::warn!(
-                            path = %path.display(),
-                            resolved = %resolved.display(),
-                            "Skipping symlink that escapes project root"
-                        );
-                        stats.files_skipped += 1;
-                        return Ok(false);
-                    }
-                } else {
+            // Resolve symlink and verify it's within root
+            if let Ok(resolved) = fs::canonicalize(path) {
+                if !self.is_within_root(&resolved) {
+                    tracing::warn!(
+                        path = %path.display(),
+                        resolved = %resolved.display(),
+                        "Skipping symlink that escapes project root"
+                    );
                     stats.files_skipped += 1;
                     return Ok(false);
                 }
+            } else {
+                stats.files_skipped += 1;
+                return Ok(false);
             }
+        }
+
+        // Skip directories (only index files)
+        if entry.file_type().is_some_and(|ft| ft.is_dir()) {
+            return Ok(false);
         }
 
         // Get metadata
@@ -289,15 +300,24 @@ impl Indexer {
         }
 
         // Open file and read directly (no BufReader overhead when size is known)
-        let mut file = File::open(path).map_err(|e| IndexerError::Io { source: e })?;
+        let file = File::open(path).map_err(|e| IndexerError::Io { source: e })?;
 
         // Pre-allocate Vec with known capacity to avoid reallocation
-        // Safety: size ≤ max_file_size (1MB) which fits in usize on all target platforms (32-bit+)
+        let max_size = self.config.max_file_size;
+        let capacity = std::cmp::min(size, max_size);
+        // Safety: capacity ≤ max_file_size, which is bounded to sane values for indexing.
         #[allow(clippy::cast_possible_truncation)]
-        let mut bytes = Vec::with_capacity(size as usize);
+        let mut bytes = Vec::with_capacity(capacity as usize);
 
-        // Read entire file into pre-allocated buffer
-        file.read_to_end(&mut bytes).map_err(|e| IndexerError::Io { source: e })?;
+        // Read at most max_size + 1 bytes to detect concurrent growth beyond limit.
+        let read_limit = max_size.saturating_add(1);
+        file.take(read_limit)
+            .read_to_end(&mut bytes)
+            .map_err(|e| IndexerError::Io { source: e })?;
+
+        if bytes.len() as u64 > max_size {
+            return Err(IndexerError::FileTooLarge { size: bytes.len() as u64, max: max_size });
+        }
 
         // Convert to String with explicit UTF-8 validation
         String::from_utf8(bytes)
@@ -329,22 +349,32 @@ impl Indexer {
     /// Called for every file during directory walk. Marked `#[inline]` for hot-path optimization.
     #[inline]
     fn is_database_file(path: &Path) -> bool {
-        let path_str = path.to_string_lossy();
+        let file_name = match path.file_name().and_then(|name| name.to_str()) {
+            Some(name) => name,
+            None => return false,
+        };
 
         // Skip auxiliary WAL files
-        if path_str.ends_with("-shm") || path_str.ends_with("-wal") {
+        if file_name.ends_with(DB_SHM_SUFFIX) || file_name.ends_with(DB_WAL_SUFFIX) {
             return true;
         }
 
-        // Skip temp files from reindex
-        if path_str.ends_with(".db.tmp") {
+        // Skip primary database file
+        if file_name == DB_NAME {
+            return true;
+        }
+
+        // Skip temp files from reindex/auto-init
+        if file_name.ends_with(".db.tmp")
+            || (file_name.starts_with(DB_NAME) && file_name.contains(DB_TMP_SUFFIX))
+        {
             return true;
         }
 
         // Skip by extension
-        if path_str.ends_with(".db")
-            || path_str.ends_with(".sqlite")
-            || path_str.ends_with(".sqlite3")
+        if file_name.ends_with(".db")
+            || file_name.ends_with(".sqlite")
+            || file_name.ends_with(".sqlite3")
         {
             return true;
         }
@@ -393,8 +423,19 @@ impl Indexer {
 /// - FTS5 optimization fails
 /// - File system operations fail (atomic rename, WAL file cleanup)
 pub fn atomic_reindex(root: &Path, config: &crate::db::PragmaConfig) -> Result<IndexStats> {
+    atomic_reindex_with_config(root, config, IndexerConfig::default())
+}
+
+/// Atomic reindex with explicit indexer configuration.
+///
+/// Use this when you need to override defaults such as symlink handling.
+pub fn atomic_reindex_with_config(
+    root: &Path,
+    config: &crate::db::PragmaConfig,
+    indexer_config: IndexerConfig,
+) -> Result<IndexStats> {
     let db_path = root.join(DB_NAME);
-    let tmp_path = db_path.with_extension(DB_TMP_SUFFIX.trim_start_matches('.'));
+    let tmp_path = root.join(DB_TMP_NAME);
 
     // Clean up any existing temp file
     let _ = fs::remove_file(&tmp_path);
@@ -404,15 +445,8 @@ pub fn atomic_reindex(root: &Path, config: &crate::db::PragmaConfig) -> Result<I
     db.init_schema()?;
 
     // Index all files
-    let indexer_config = IndexerConfig::default();
     let mut indexer = Indexer::new(root, db, indexer_config);
     let stats = indexer.index_directory()?;
-
-    // Optimize FTS5
-    indexer.db.optimize_fts()?;
-
-    // 2025+ best practice: PRAGMA optimize for query planner statistics
-    indexer.db.optimize()?;
 
     // Ensure WAL contents are checkpointed into the main database file before rename
     indexer
@@ -443,7 +477,8 @@ pub fn atomic_reindex(root: &Path, config: &crate::db::PragmaConfig) -> Result<I
 mod tests {
     use super::*;
     use crate::db::PragmaConfig;
-    use crate::{DB_NAME, DB_SHM_SUFFIX, DB_WAL_SUFFIX};
+    use crate::{DB_NAME, DB_SHM_SUFFIX, DB_TMP_NAME, DB_TMP_SUFFIX, DB_WAL_SUFFIX};
+    use std::path::Path;
     use tempfile::tempdir;
 
     #[test]
@@ -478,6 +513,55 @@ mod tests {
         assert!(db_path.exists());
         assert!(!shm_path.exists());
         assert!(!wal_path.exists());
+    }
+
+    #[test]
+    fn test_atomic_reindex_skips_temp_database_file() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join(DB_NAME);
+        let config = PragmaConfig::default();
+
+        std::fs::write(dir.path().join("main.rs"), "fn main() {}").unwrap();
+
+        let stats = atomic_reindex(dir.path(), &config).unwrap();
+        assert_eq!(stats.files_indexed, 1);
+        assert!(db_path.exists());
+
+        let db = Database::open(&db_path, &config).unwrap();
+        let files = db.get_all_files(10).unwrap();
+        assert!(files.contains(&"main.rs".to_string()));
+
+        let legacy_tmp_name = Path::new(DB_NAME)
+            .with_extension(DB_TMP_SUFFIX.trim_start_matches('.'))
+            .to_string_lossy()
+            .to_string();
+
+        assert!(!files.contains(&DB_TMP_NAME.to_string()));
+        assert!(!files.contains(&legacy_tmp_name));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_atomic_reindex_with_config_follows_symlinks() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempdir().unwrap();
+        let config = PragmaConfig::default();
+        let indexer_config = IndexerConfig { follow_symlinks: true, ..Default::default() };
+
+        let real_dir = dir.path().join("real");
+        fs::create_dir_all(&real_dir).unwrap();
+        fs::write(real_dir.join("inner.rs"), "fn inner() {}").unwrap();
+        let link_dir = dir.path().join("linkdir");
+        symlink(&real_dir, &link_dir).unwrap();
+
+        let stats = atomic_reindex_with_config(dir.path(), &config, indexer_config).unwrap();
+        assert!(stats.files_indexed >= 1);
+
+        let db = Database::open(&dir.path().join(DB_NAME), &config).unwrap();
+        let files = db.get_all_files(10).unwrap();
+        assert!(files.contains(&"real/inner.rs".to_string()));
+        assert!(files.contains(&"linkdir/inner.rs".to_string()));
     }
 
     #[test]
@@ -588,6 +672,27 @@ mod tests {
     }
 
     #[test]
+    fn test_skips_temp_database_suffix_variants() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join(DB_NAME);
+        let config = IndexerConfig::default();
+        let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+        db.init_schema().unwrap();
+        let mut indexer = Indexer::new(dir.path(), db, config);
+
+        std::fs::write(dir.path().join("file.rs"), "// real file").unwrap();
+        std::fs::write(dir.path().join(format!("{DB_NAME}{DB_TMP_SUFFIX}.1234")), "temp db")
+            .unwrap();
+
+        let stats = indexer.index_directory().unwrap();
+        assert_eq!(stats.files_indexed, 1);
+
+        let files = indexer.db().get_all_files(10).unwrap();
+        assert!(files.contains(&"file.rs".to_string()));
+        assert!(!files.contains(&format!("{DB_NAME}{DB_TMP_SUFFIX}.1234")));
+    }
+
+    #[test]
     fn test_is_within_root() {
         let dir = tempdir().unwrap();
         let db_path = dir.path().join(DB_NAME);
@@ -602,5 +707,142 @@ mod tests {
         // Path outside root
         let outside = PathBuf::from("/etc/passwd");
         assert!(!indexer.is_within_root(&outside));
+    }
+
+    #[test]
+    fn test_read_file_content_rejects_growth_beyond_max() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join(DB_NAME);
+        let config = IndexerConfig { max_file_size: 4, ..Default::default() };
+        let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+        db.init_schema().unwrap();
+        let indexer = Indexer::new(dir.path(), db, config);
+
+        let file_path = dir.path().join("grow.txt");
+        std::fs::write(&file_path, "0123456789").unwrap();
+
+        let result = indexer.read_file_content(&file_path, 4);
+        assert!(matches!(result, Err(IndexerError::FileTooLarge { .. })));
+    }
+
+    #[test]
+    fn test_read_file_content_max_size_no_overflow() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join(DB_NAME);
+        let config = IndexerConfig { max_file_size: u64::MAX, ..Default::default() };
+        let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+        db.init_schema().unwrap();
+        let indexer = Indexer::new(dir.path(), db, config);
+
+        let file_path = dir.path().join("tiny.txt");
+        fs::write(&file_path, "hi").unwrap();
+
+        let content = indexer.read_file_content(&file_path, 2).unwrap();
+        assert_eq!(content, "hi");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_symlink_file_skipped_by_default() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join(DB_NAME);
+        let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+        db.init_schema().unwrap();
+        let config = IndexerConfig::default();
+        let mut indexer = Indexer::new(dir.path(), db, config);
+
+        let target = dir.path().join("target.rs");
+        fs::write(&target, "fn main() {}").unwrap();
+        let link = dir.path().join("link.rs");
+        symlink(&target, &link).unwrap();
+
+        let stats = indexer.index_directory().unwrap();
+        assert_eq!(stats.files_indexed, 1);
+        assert_eq!(stats.files_skipped, 1);
+
+        let files = indexer.db().get_all_files(10).unwrap();
+        assert!(files.contains(&"target.rs".to_string()));
+        assert!(!files.contains(&"link.rs".to_string()));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_symlink_file_follow_enabled() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join(DB_NAME);
+        let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+        db.init_schema().unwrap();
+        let config = IndexerConfig { follow_symlinks: true, ..Default::default() };
+        let mut indexer = Indexer::new(dir.path(), db, config);
+
+        let target = dir.path().join("target.rs");
+        fs::write(&target, "fn main() {}").unwrap();
+        let link = dir.path().join("link.rs");
+        symlink(&target, &link).unwrap();
+
+        let stats = indexer.index_directory().unwrap();
+        assert_eq!(stats.files_indexed, 1);
+
+        let files = indexer.db().get_all_files(10).unwrap();
+        assert!(files.contains(&"target.rs".to_string()));
+        assert!(!files.contains(&"link.rs".to_string()));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_symlink_dir_follow_enabled() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join(DB_NAME);
+        let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+        db.init_schema().unwrap();
+        let config = IndexerConfig { follow_symlinks: true, ..Default::default() };
+        let mut indexer = Indexer::new(dir.path(), db, config);
+
+        let real_dir = dir.path().join("real");
+        fs::create_dir_all(&real_dir).unwrap();
+        fs::write(real_dir.join("inner.rs"), "fn inner() {}").unwrap();
+
+        let link_dir = dir.path().join("linkdir");
+        symlink(&real_dir, &link_dir).unwrap();
+
+        let stats = indexer.index_directory().unwrap();
+        assert_eq!(stats.files_indexed, 2);
+
+        let files = indexer.db().get_all_files(10).unwrap();
+        assert!(files.contains(&"real/inner.rs".to_string()));
+        assert!(files.contains(&"linkdir/inner.rs".to_string()));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_symlink_escape_skipped() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempdir().unwrap();
+        let outside = tempdir().unwrap();
+        let external = outside.path().join("external.rs");
+        fs::write(&external, "fn external() {}").unwrap();
+
+        let db_path = dir.path().join(DB_NAME);
+        let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+        db.init_schema().unwrap();
+        let config = IndexerConfig { follow_symlinks: true, ..Default::default() };
+        let mut indexer = Indexer::new(dir.path(), db, config);
+
+        let link = dir.path().join("escape.rs");
+        symlink(&external, &link).unwrap();
+
+        let stats = indexer.index_directory().unwrap();
+        assert_eq!(stats.files_indexed, 0);
+        assert_eq!(stats.files_skipped, 1);
+
+        let files = indexer.db().get_all_files(10).unwrap();
+        assert!(files.is_empty());
     }
 }

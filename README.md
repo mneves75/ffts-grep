@@ -2,6 +2,7 @@
 
 [![Version](https://img.shields.io/badge/version-0.9-blue.svg)](https://github.com/mneves75/ffts-grep/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
+[![CI](https://github.com/mneves75/ffts-grep/actions/workflows/ci.yml/badge.svg)](https://github.com/mneves75/ffts-grep/actions/workflows/ci.yml)
 [![Rust](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org/)
 
 Fast full-text search file indexer using SQLite FTS5.
@@ -40,6 +41,12 @@ Or use the deploy script for Claude Code integration:
 ./deploy_cc.sh
 ```
 
+## Toolchain and CI
+
+- **MSRV**: Rust 1.85+ (Edition 2024)
+- **Pinned dev toolchain**: `rust-toolchain.toml` targets Rust 1.92.0
+- **CI**: Tests run on Linux/macOS/Windows for both the latest stable and MSRV
+
 ## Usage
 
 ### Commands
@@ -57,6 +64,7 @@ Or use the deploy script for Claude Code integration:
 |--------|-------------|
 | `--quiet, -q` | Suppress status messages (for CI/scripting) |
 | `--project-dir <path>` | Project root directory (default: current directory) |
+| `--follow-symlinks` | Follow symlinks when indexing (default: disabled for safety) |
 | `--help` | Show help information |
 | `--version` | Show version information |
 
@@ -90,6 +98,9 @@ ffts-grep index
 
 # Force full reindex (atomic replace)
 ffts-grep index --reindex
+
+# Include symlink targets (opt-in)
+ffts-grep index --follow-symlinks
 ```
 
 ### Subcommand: search

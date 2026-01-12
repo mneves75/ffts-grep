@@ -24,44 +24,109 @@ The conductor doesn't cook—but without the conductor, chaos ensues!
 
 ## 6.2 The Main Function: Entry Point
 
-See `main.rs:57-189`:
+See `main.rs:24-173`:
 
 ```rust
-fn main() -> Result<()> {
-    // Parse command-line arguments
-    let args = Cli::parse();
+fn main() -> std::process::ExitCode {
+    let cli = Cli::parse();
 
-    // Initialize structured logging with current timestamp
-    // Uses RUST_LOG format for compatibility with log aggregators
-    tracing_subscribers::fmt::init();
+    if !cli.quiet {
+        tracing_subscriber::fmt()
+            .with_target(false)
+            .with_level(true)
+            .with_writer(std::io::stderr)
+            .with_env_filter(
+                tracing_subscriber::EnvFilter::try_from_default_env()
+                    .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("warn")),
+            )
+            .init();
+    }
 
-    // Resolve project directory (single-pass detection)
-    let project_dir = args.project_dir()?;
-
-    // Dispatch to appropriate command handler
-    match args.command {
-        Some(Commands::Index { reindex }) => {
-            run_indexing(&project_dir, reindex, args.quiet)?;
+    let project_dir = match cli.project_dir() {
+        Ok(path) => path,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to resolve project directory");
+            return ExitCode::NoInput.into();
         }
-        Some(Commands::Search { query, paths_only, format, max_results }) => {
-            run_search(&project_dir, query, paths_only, format, max_results, args.quiet)?;
-        }
-        Some(Commands::Doctor { verbose }) => {
-            run_doctor(&project_dir, args.format, verbose)?;
+    };
+
+    if !project_dir.exists() || !project_dir.is_dir() {
+        tracing::error!(path = %project_dir.display(), "Invalid project directory");
+        return ExitCode::IoErr.into();
+    }
+
+    let pragma_config = PragmaConfig {
+        journal_mode: "WAL".to_string(),
+        synchronous: cli.pragma_synchronous.clone(),
+        cache_size: cli.pragma_cache_size,
+        temp_store: "MEMORY".to_string(),
+        mmap_size: cli.pragma_mmap_size,
+        page_size: cli.pragma_page_size,
+        busy_timeout_ms: cli.pragma_busy_timeout,
+    };
+
+    let indexer_config =
+        || IndexerConfig { follow_symlinks: cli.follow_symlinks, ..Default::default() };
+
+    match &cli.command {
+        Some(Commands::Doctor { verbose, json }) => {
+            let format = if *json { OutputFormat::Json } else { OutputFormat::Plain };
+            return run_doctor(&project_dir, *verbose, format);
         }
         Some(Commands::Init { gitignore_only, force }) => {
-            run_init(&project_dir, gitignore_only, force, args.quiet)?;
+            return run_init(
+                &project_dir,
+                &pragma_config,
+                indexer_config(),
+                *gitignore_only,
+                *force,
+                cli.quiet,
+            );
         }
-        // No command = interactive mode (stdin JSON from Claude Code)
+        Some(Commands::Index { reindex }) => {
+            return run_indexing(
+                &project_dir,
+                &pragma_config,
+                indexer_config(),
+                *reindex,
+                cli.quiet,
+            );
+        }
+        Some(Commands::Search { query, paths, format, benchmark, no_auto_init }) => {
+            if *benchmark {
+                return run_benchmark(&project_dir, &pragma_config, cli.quiet);
+            }
+
+            let search_query = if query.is_empty() { &cli.query } else { query };
+            let output_format = format.unwrap_or(OutputFormat::Plain);
+            return run_search(
+                &project_dir,
+                &pragma_config,
+                indexer_config(),
+                search_query,
+                *paths,
+                output_format,
+                *no_auto_init,
+                cli.quiet,
+            );
+        }
         None => {
-            // Read query from stdin as JSON: {"query": "search term"}
-            if let Some(query) = read_query_from_stdin()? {
-                run_search(&project_dir, query, false, None, 15, true)?;
+            if cli.query_string().is_some() {
+                return run_search(
+                    &project_dir,
+                    &pragma_config,
+                    indexer_config(),
+                    &cli.query,
+                    false,
+                    OutputFormat::Plain,
+                    false,
+                    cli.quiet,
+                );
             }
         }
     }
 
-    Ok(())
+    ExitCode::Ok.into()
 }
 ```
 
@@ -70,69 +135,80 @@ fn main() -> Result<()> {
 1. **Parse first** — Get user input before doing anything
 2. **Initialize logging** — Capture what's about to happen
 3. **Dispatch** — Route to appropriate handler
-4. **No command = Claude Code mode** — Special integration
+4. **No command = implicit search or Claude Code mode** — Query runs search; otherwise stdin JSON is parsed
 
 ---
 
 ## 6.3 Running Indexing
 
-See `main.rs:197-349`:
+See `main.rs:178-258`:
 
 ```rust
-fn run_indexing(project_dir: &Path, reindex: bool, quiet: bool) -> Result<IndexStats> {
-    let config = build_pragma_config(&Cli::parse())?;
+fn run_indexing(
+    project_dir: &Path,
+    config: &PragmaConfig,
+    indexer_config: IndexerConfig,
+    force_reindex: bool,
+    _quiet: bool,
+) -> std::process::ExitCode {
+    let db_path = project_dir.join(DB_NAME);
 
-    // Handle reindex mode (atomic file replacement)
-    if reindex {
-        if !quiet {
-            info!("Starting atomic reindex...");
+    if force_reindex {
+        tracing::info!("Running atomic reindex");
+
+        match atomic_reindex_with_config(project_dir, config, indexer_config) {
+            Ok(stats) => {
+                tracing::info!(
+                    files = stats.files_indexed,
+                    bytes = stats.bytes_indexed,
+                    duration_secs = %format!("{:.2}", stats.duration.as_secs_f64()),
+                    "Indexing complete"
+                );
+            }
+            Err(e) => {
+                tracing::error!(error = %e, "Atomic reindex failed");
+                return match e {
+                    IndexerError::Io { .. } => ExitCode::IoErr.into(),
+                    _ => ExitCode::Software.into(),
+                };
+            }
         }
-
-        // Create temp database, index all files, then atomically replace
-        let stats = indexer::atomic_reindex(project_dir, &config)?;
-
-        if !quiet {
-            info!(
-                files = stats.files_indexed,
-                skipped = stats.files_skipped,
-                bytes = stats.bytes_indexed,
-                duration = ?stats.duration,
-                "Reindex complete"
-            );
-        }
-
-        return Ok(stats);
+        return ExitCode::Ok.into();
     }
 
     // Incremental index (skip unchanged files)
-    if !quiet {
-        info!("Starting incremental index...");
+    let db = match Database::open(&db_path, config) {
+        Ok(db) => db,
+        Err(e) => {
+            tracing::error!(error = %e, db_path = %db_path.display(), "Failed to open database");
+            return ExitCode::IoErr.into();
+        }
+    };
+    if let Err(e) = db.init_schema() {
+        tracing::error!(error = %e, "Failed to initialize schema");
+        return ExitCode::Software.into();
     }
 
-    let db = db::Database::open(project_dir.join(DB_NAME), &config)?;
-    db.init_schema()?;
-
-    let mut indexer = indexer::Indexer::new(
-        project_dir,
-        db,
-        indexer::IndexerConfig::default(),
-    );
-
-    let stats = indexer.index_directory()?;
-
-    if !quiet {
-        info!(
-            files = stats.files_indexed,
-            skipped = stats.files_skipped,
-            bytes = stats.bytes_indexed,
-            duration = ?stats.duration,
-            "Index complete"
-        );
+    let mut indexer = Indexer::new(project_dir, db, indexer_config);
+    match indexer.index_directory() {
+        Ok(stats) => {
+            tracing::info!(
+                files = stats.files_indexed,
+                bytes = stats.bytes_indexed,
+                duration_secs = %format!("{:.2}", stats.duration.as_secs_f64()),
+                "Indexing complete"
+            );
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Indexing failed");
+            return ExitCode::Software.into();
+        }
     }
 
-    Ok(stats)
+    ExitCode::Ok.into()
 }
 ```
+
 
 ### Two Indexing Modes
 
@@ -145,82 +221,116 @@ fn run_indexing(project_dir: &Path, reindex: bool, quiet: bool) -> Result<IndexS
 
 ## 6.4 Running Searches
 
-See `main.rs:432-553`:
+See `main.rs:337-420`:
 
 ```rust
 fn run_search(
     project_dir: &Path,
-    query: String,
+    config: &PragmaConfig,
+    indexer_config: IndexerConfig,
+    query: &[String],
     paths_only: bool,
-    format: Option<OutputFormat>,
-    max_results: u32,
+    format: OutputFormat,
+    no_auto_init: bool,
     quiet: bool,
-) -> Result<()> {
-    let config = build_pragma_config(&Cli::parse())?;
+) -> std::process::ExitCode {
+    let db_path = project_dir.join(DB_NAME);
+    let query_str = query.join(" ");
 
-    // Fast health check with auto-init capability
-    // This ensures we can search even if DB doesn't exist yet
     let health = health::check_health_fast(project_dir);
 
     match health {
-        health::DatabaseHealth::Healthy => {
-            // Continue with search
-        }
-        health::DatabaseHealth::Empty => {
-            // Database exists but has no files - auto-init
+        DatabaseHealth::Healthy => {}
+
+        DatabaseHealth::Missing | DatabaseHealth::Empty if !no_auto_init => {
             if !quiet {
-                warn!("Database is empty, initializing...");
+                tracing::info!(
+                    health = ?health,
+                    path = %project_dir.display(),
+                    "Auto-initializing database"
+                );
             }
-            let _ = health::auto_init(project_dir, &config, true)?;
-        }
-        health::DatabaseHealth::Missing => {
-            // No database - create one and index
-            if !quiet {
-                info!("No database found, initializing...");
+            if let Err(e) =
+                health::auto_init_with_config(project_dir, config, indexer_config, quiet)
+            {
+                tracing::error!(error = %e, "Auto-init failed");
+                return ExitCode::Software.into();
             }
-            let _ = health::auto_init(project_dir, &config, true)?;
         }
-        health::DatabaseHealth::SchemaInvalid | health::DatabaseHealth::Corrupted => {
-            // Database exists but is broken - reinitialize
-            if !quiet {
-                warn!("Database is corrupted, reinitializing...");
+
+        DatabaseHealth::SchemaInvalid | DatabaseHealth::Corrupted if !no_auto_init => {
+            tracing::warn!(health = ?health, "Database corrupted, reinitializing");
+            if let Err(e) =
+                health::backup_and_reinit_with_config(project_dir, config, indexer_config, quiet)
+            {
+                tracing::error!(error = %e, "Reinit failed");
+                return ExitCode::Software.into();
             }
-            let _ = health::backup_and_reinit(project_dir, &config, true)?;
         }
-        health::DatabaseHealth::WrongApplicationId => {
-            return Err(IndexerError::ForeignDatabase);
+
+        DatabaseHealth::Missing | DatabaseHealth::Empty => {
+            tracing::error!("Database not initialized. Run: ffts-grep init");
+            return ExitCode::DataErr.into();
         }
-        health::DatabaseHealth::Unreadable => {
-            return Err(IndexerError::Io {
-                source: std::io::Error::new(
-                    std::io::ErrorKind::PermissionDenied,
-                    "Cannot read database",
-                ),
-            });
+
+        DatabaseHealth::SchemaInvalid | DatabaseHealth::Corrupted => {
+            tracing::error!("Database corrupted. Run: ffts-grep init --force");
+            return ExitCode::DataErr.into();
+        }
+
+        DatabaseHealth::WrongApplicationId => {
+            tracing::error!(
+                "Database {} belongs to different application. Remove manually or use different directory.",
+                DB_NAME
+            );
+            return ExitCode::DataErr.into();
+        }
+
+        DatabaseHealth::Unreadable => {
+            tracing::error!("Cannot read database - check file permissions");
+            return ExitCode::NoPerm.into();
+        }
+
+        _ => {
+            tracing::error!("Unknown database health state");
+            return ExitCode::Software.into();
+        }
+    }
+
+    let mut db = match Database::open(&db_path, config) {
+        Ok(db) => db,
+        Err(e) => {
+            tracing::error!(
+                error = %e,
+                db_path = %db_path.display(),
+                "Failed to open database"
+            );
+            return ExitCode::IoErr.into();
         }
     };
 
-    // Open database for searching
-    let mut db = db::Database::open(project_dir.join(DB_NAME), &config)?;
+    if let Err(e) = db.init_schema() {
+        tracing::error!(error = %e, "Failed to initialize schema");
+        return ExitCode::Software.into();
+    }
 
-    // Configure and execute search
-    let search_config = search::SearchConfig {
-        paths_only: paths_only || format == Some(OutputFormat::Json),
-        format: format.unwrap_or(OutputFormat::Plain),
-        max_results,
-    };
+    let search_config = SearchConfig { paths_only, format, max_results: 50 };
+    let mut searcher = Searcher::new(&mut db, search_config);
 
-    let mut searcher = search::Searcher::new(&mut db, search_config);
+    match searcher.search(&query_str) {
+        Ok(results) => {
+            if let Err(e) = searcher.format_results(&results, &mut std::io::stdout()) {
+                tracing::error!(error = %e, "Failed to output search results");
+                return ExitCode::Software.into();
+            }
+        }
+        Err(e) => {
+            tracing::error!(error = %e, query = %query_str, "Search query failed");
+            return ExitCode::DataErr.into();
+        }
+    }
 
-    // Sanitize query and execute search
-    let results = searcher.search(&query)?;
-
-    // Output results
-    let stdout = std::io::stdout();
-    let mut handle = stdout.lock();
-    searcher.format_results(&results, &mut handle)?;
-
-    Ok(())
+    ExitCode::Ok.into()
 }
 ```
 
@@ -238,34 +348,32 @@ The search command handles 7 health states:
 | `WrongApplicationId` | Error |
 | `Unreadable` | Error |
 
+When `--no-auto-init` is set, `Missing`, `Empty`, `SchemaInvalid`, and `Corrupted`
+return `ExitCode::DataErr` with an actionable message instead of auto-repairing.
+
 ---
 
 ## 6.5 Running Diagnostics
 
-See `main.rs:556-577`:
+See `main.rs:422-454`:
 
 ```rust
-fn run_doctor(
-    project_dir: &Path,
-    format: Option<OutputFormat>,
-    verbose: bool,
-) -> Result<doctor::DoctorSummary> {
-    let mut doctor = doctor::Doctor::new(project_dir, verbose);
+fn run_doctor(project_dir: &Path, verbose: bool, format: OutputFormat) -> std::process::ExitCode {
+    let mut doctor = Doctor::new(project_dir, verbose);
     let summary = doctor.run();
 
-    let output_format = format.unwrap_or(OutputFormat::Plain);
-    let stdout = std::io::stdout();
-    let mut handle = stdout.lock();
-    doctor.output(&mut handle, output_format, &summary)?;
-
-    // Exit with appropriate code based on severity
-    if summary.has_errors() {
-        std::process::exit(doctor::ExitCode::DataErr as i32);
-    } else if summary.has_warnings() {
-        std::process::exit(doctor::ExitCode::Software as i32);
+    if let Err(e) = doctor.output(&mut std::io::stdout(), format, &summary) {
+        tracing::error!(error = %e, "Failed to output doctor results");
+        return ExitCode::Software.into();
     }
 
-    Ok(summary)
+    if summary.has_errors() {
+        ExitCode::DataErr.into()
+    } else if summary.has_warnings() {
+        ExitCode::Software.into()
+    } else {
+        ExitCode::Ok.into()
+    }
 }
 ```
 
@@ -273,26 +381,90 @@ fn run_doctor(
 
 ## 6.6 Running Initialization
 
-See `main.rs:584-713`:
+See `main.rs:455-640`:
 
 ```rust
 fn run_init(
     project_dir: &Path,
+    config: &PragmaConfig,
+    indexer_config: IndexerConfig,
     gitignore_only: bool,
     force: bool,
     quiet: bool,
-) -> Result<init::InitResult> {
-    let config = build_pragma_config(&Cli::parse())?;
+) -> std::process::ExitCode {
+    let gitignore_result = match init::update_gitignore(project_dir) {
+        Ok(result) => result,
+        Err(e) => {
+            tracing::error!(error = %e, path = %project_dir.display(), "Failed to update .gitignore");
+            return ExitCode::IoErr.into();
+        }
+    };
 
-    let result = init::initialize_project(project_dir, &config, gitignore_only, force)?;
-
-    if !quiet {
-        let stdout = std::io::stdout();
-        let mut handle = stdout.lock();
-        init::output_init_result(&mut handle, &result, quiet)?;
+    if gitignore_only {
+        let result = InitResult {
+            gitignore: gitignore_result,
+            database_created: false,
+            files_indexed: 0,
+        };
+        let _ = init::output_init_result(&mut std::io::stderr(), &result, quiet);
+        return ExitCode::Ok.into();
     }
 
-    Ok(result)
+    let db_path = project_dir.join(DB_NAME);
+    let db_exists = db_path.exists();
+
+    if db_exists && !force {
+        let db = match Database::open(&db_path, config) {
+            Ok(db) => db,
+            Err(e) => {
+                tracing::error!(error = %e, db_path = %db_path.display(), "Failed to open existing database");
+                return ExitCode::IoErr.into();
+            }
+        };
+        let file_count = db.get_file_count().unwrap_or(0);
+        let result = InitResult {
+            gitignore: gitignore_result,
+            database_created: false,
+            files_indexed: file_count,
+        };
+        let _ = init::output_init_result(&mut std::io::stderr(), &result, quiet);
+        return ExitCode::Ok.into();
+    }
+
+    if force && db_exists {
+        let shm_filename = format!("{DB_NAME}{DB_SHM_SUFFIX}");
+        let wal_filename = format!("{DB_NAME}{DB_WAL_SUFFIX}");
+        let _ = fs::remove_file(&db_path);
+        let _ = fs::remove_file(project_dir.join(&shm_filename));
+        let _ = fs::remove_file(project_dir.join(&wal_filename));
+    }
+
+    let db = match Database::open(&db_path, config) {
+        Ok(db) => db,
+        Err(e) => {
+            tracing::error!(error = %e, db_path = %db_path.display(), "Failed to create database");
+            return ExitCode::IoErr.into();
+        }
+    };
+
+    if let Err(e) = db.init_schema() {
+        tracing::error!(error = %e, "Failed to initialize schema");
+        return ExitCode::Software.into();
+    }
+
+    let mut indexer = Indexer::new(project_dir, db, indexer_config);
+    let files_indexed = match indexer.index_directory() {
+        Ok(stats) => stats.files_indexed as usize,
+        Err(e) => {
+            tracing::error!(error = %e, "Indexing failed during initialization");
+            return ExitCode::Software.into();
+        }
+    };
+
+    let result = InitResult { gitignore: gitignore_result, database_created: true, files_indexed };
+    let _ = init::output_init_result(&mut std::io::stderr(), &result, quiet);
+
+    ExitCode::Ok.into()
 }
 ```
 
@@ -300,18 +472,17 @@ fn run_init(
 
 ## 6.7 Platform-Specific Code
 
-See `main.rs:28-55`:
+See `indexer.rs:41-72` and `init.rs:24-58`:
 
 ```rust
 #[cfg(windows)]
 fn atomic_replace(from: &Path, to: &Path) -> Result<()> {
-    use std::os::windows::ffi::OsStrExt;
     use windows_sys::Win32::Storage::FileSystem::{
         MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH, MoveFileExW,
     };
 
-    let from_wide: Vec<u16> = from.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
-    let to_wide: Vec<u16> = to.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
+    let from_wide: Vec<u16> = from.as_os_str().encode_wide().chain(Some(0)).collect();
+    let to_wide: Vec<u16> = to.as_os_str().encode_wide().chain(Some(0)).collect();
 
     let result = unsafe {
         MoveFileExW(
@@ -322,9 +493,7 @@ fn atomic_replace(from: &Path, to: &Path) -> Result<()> {
     };
 
     if result == 0 {
-        return Err(IndexerError::Io {
-            source: std::io::Error::last_os_error(),
-        });
+        return Err(IndexerError::Io { source: std::io::Error::last_os_error() });
     }
 
     Ok(())
@@ -344,6 +513,9 @@ fn atomic_replace(from: &Path, to: &Path) -> Result<()> {
 | Unix | `fs::rename` | POSIX guarantees atomic rename |
 
 The Unix version is simpler because POSIX guarantees that `rename()` is atomic.
+
+Note: `init.rs` uses a sibling `atomic_replace` helper with the same
+MoveFileExW fallback to safely replace `.gitignore` on Windows.
 
 ---
 
@@ -381,16 +553,31 @@ The main function follows the **Orchestrator Pattern**:
 
 ## 6.9 Claude Code Integration
 
-See `main.rs:162-184`:
+See `main.rs:118-167`:
 
 ```rust
-// No command = interactive mode (stdin JSON from Claude Code)
-// Claude Code sends: {"query": "search term"}
-if args.query.is_empty() {
-    if let Some(query) = read_query_from_stdin()? {
-        run_search(&project_dir, query, false, None, 15, true)?;
+// No args - try reading JSON from stdin (Claude Code integration)
+// Only read stdin if it's not a terminal (i.e., data is being piped)
+let stdin = io::stdin();
+if !stdin.is_terminal() {
+    if let Some(Ok(line)) = stdin.lock().lines().next() {
+        if let Ok(input) = serde_json::from_str::<StdinQuery>(&line) {
+            if !input.query.is_empty() {
+                let query_parts: Vec<String> =
+                    input.query.split_whitespace().map(String::from).collect();
+                return run_search(
+                    &project_dir,
+                    &pragma_config,
+                    indexer_config(),
+                    &query_parts,
+                    false,
+                    OutputFormat::Plain,
+                    false,
+                    cli.quiet,
+                );
+            }
+        }
     }
-    return Ok(());
 }
 ```
 

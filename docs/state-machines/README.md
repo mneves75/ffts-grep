@@ -58,7 +58,7 @@ Search auto-repairs database before executing query.
 
 ### 5. Atomic Reindex
 ```
-Build in .tmp → checkpoint WAL → atomic rename → cleanup old WAL
+Build in .ffts-index.db.tmp → checkpoint WAL → atomic rename → cleanup old WAL
 ```
 
 ## Verification

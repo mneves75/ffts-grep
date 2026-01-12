@@ -1,7 +1,5 @@
 use std::fs;
 use std::io::{self, BufRead, IsTerminal};
-#[cfg(windows)]
-use std::os::windows::ffi::OsStrExt;
 use std::path::Path;
 
 use clap::Parser;
@@ -14,45 +12,16 @@ struct StdinQuery {
     query: String,
 }
 use ffts_indexer::{
-    DB_NAME, DB_SHM_SUFFIX, DB_TMP_SUFFIX, DB_WAL_SUFFIX,
+    DB_NAME, DB_SHM_SUFFIX, DB_WAL_SUFFIX,
     cli::{Cli, Commands, OutputFormat},
     db::{Database, PragmaConfig},
     doctor::Doctor,
-    error::ExitCode,
+    error::{ExitCode, IndexerError},
     health::{self, DatabaseHealth},
-    indexer::{Indexer, IndexerConfig},
+    indexer::{Indexer, IndexerConfig, atomic_reindex_with_config},
     init::{self, InitResult},
     search::{SearchConfig, Searcher},
 };
-
-#[cfg(windows)]
-fn atomic_replace(from: &Path, to: &Path) -> std::io::Result<()> {
-    use windows_sys::Win32::Storage::FileSystem::{
-        MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH, MoveFileExW,
-    };
-
-    let from_wide: Vec<u16> = from.as_os_str().encode_wide().chain(Some(0)).collect();
-    let to_wide: Vec<u16> = to.as_os_str().encode_wide().chain(Some(0)).collect();
-
-    let result = unsafe {
-        MoveFileExW(
-            from_wide.as_ptr(),
-            to_wide.as_ptr(),
-            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
-        )
-    };
-
-    if result == 0 {
-        return Err(std::io::Error::last_os_error());
-    }
-
-    Ok(())
-}
-
-#[cfg(not(windows))]
-fn atomic_replace(from: &Path, to: &Path) -> std::io::Result<()> {
-    fs::rename(from, to)
-}
 
 fn main() -> std::process::ExitCode {
     // Parse CLI arguments
@@ -113,6 +82,8 @@ fn main() -> std::process::ExitCode {
         page_size: cli.pragma_page_size,
         busy_timeout_ms: cli.pragma_busy_timeout,
     };
+    let indexer_config =
+        || IndexerConfig { follow_symlinks: cli.follow_symlinks, ..Default::default() };
 
     // Handle subcommands
     match &cli.command {
@@ -121,10 +92,23 @@ fn main() -> std::process::ExitCode {
             return run_doctor(&project_dir, *verbose, format);
         }
         Some(Commands::Init { gitignore_only, force }) => {
-            return run_init(&project_dir, &pragma_config, *gitignore_only, *force, cli.quiet);
+            return run_init(
+                &project_dir,
+                &pragma_config,
+                indexer_config(),
+                *gitignore_only,
+                *force,
+                cli.quiet,
+            );
         }
         Some(Commands::Index { reindex }) => {
-            return run_indexing(&project_dir, &pragma_config, *reindex, cli.quiet);
+            return run_indexing(
+                &project_dir,
+                &pragma_config,
+                indexer_config(),
+                *reindex,
+                cli.quiet,
+            );
         }
         Some(Commands::Search { query, paths, format, benchmark, no_auto_init }) => {
             // Run benchmark mode if requested
@@ -138,6 +122,7 @@ fn main() -> std::process::ExitCode {
             return run_search(
                 &project_dir,
                 &pragma_config,
+                indexer_config(),
                 search_query,
                 *paths,
                 output_format,
@@ -151,6 +136,7 @@ fn main() -> std::process::ExitCode {
                 return run_search(
                     &project_dir,
                     &pragma_config,
+                    indexer_config(),
                     &cli.query,
                     false,
                     OutputFormat::Plain,
@@ -172,6 +158,7 @@ fn main() -> std::process::ExitCode {
                             return run_search(
                                 &project_dir,
                                 &pragma_config,
+                                indexer_config(),
                                 &query_parts,
                                 false,
                                 OutputFormat::Plain,
@@ -197,6 +184,7 @@ fn main() -> std::process::ExitCode {
 fn run_indexing(
     project_dir: &Path,
     config: &PragmaConfig,
+    indexer_config: IndexerConfig,
     force_reindex: bool,
     _quiet: bool,
 ) -> std::process::ExitCode {
@@ -206,99 +194,21 @@ fn run_indexing(
         // Atomic reindex with temp file
         tracing::info!("Running atomic reindex");
 
-        // Create temporary database
-        let tmp_path =
-            project_dir.join(DB_NAME).with_extension(DB_TMP_SUFFIX.trim_start_matches('.'));
-        let _ = fs::remove_file(&tmp_path);
-
-        match Database::open(&tmp_path, config) {
-            Ok(db) => {
-                if let Err(e) = db.init_schema() {
-                    tracing::error!(
-                        error = %e,
-                        db_path = %tmp_path.display(),
-                        "Failed to initialize schema"
-                    );
-                    let _ = fs::remove_file(&tmp_path);
-                    return ExitCode::Software.into(); // SOFTWARE
-                }
-
-                // Index all files
-                let indexer_config = IndexerConfig::default();
-                let mut indexer = Indexer::new(project_dir, db, indexer_config);
-
-                match indexer.index_directory() {
-                    Ok(stats) => {
-                        tracing::info!(
-                            files = stats.files_indexed,
-                            bytes = stats.bytes_indexed,
-                            duration_secs = %format!("{:.2}", stats.duration.as_secs_f64()),
-                            "Indexing complete"
-                        );
-
-                        // Optimize FTS5
-                        indexer.db_mut().optimize_fts().ok();
-
-                        // WAL checkpoint: reclaim space before atomic rename
-                        let checkpoint_result = indexer.db().conn().query_row(
-                            "PRAGMA wal_checkpoint(TRUNCATE)",
-                            [],
-                            |row| {
-                                let busy: i64 = row.get(0)?;
-                                let log: i64 = row.get(1)?;
-                                let checkpointed: i64 = row.get(2)?;
-                                Ok((busy, log, checkpointed))
-                            },
-                        );
-
-                        match checkpoint_result {
-                            Ok((busy, log, checkpointed)) => {
-                                tracing::debug!(busy, log, checkpointed, "WAL checkpoint stats");
-                            }
-                            Err(e) => {
-                                tracing::warn!(
-                                    error = %e,
-                                    "WAL checkpoint failed (non-fatal)"
-                                );
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        tracing::error!(
-                            error = %e,
-                            "Indexing failed"
-                        );
-                        let _ = fs::remove_file(&tmp_path);
-                        return ExitCode::Software.into(); // SOFTWARE
-                    }
-                }
-
-                // Atomic rename (Windows requires replace strategy)
-                if let Err(e) = atomic_replace(&tmp_path, &db_path) {
-                    tracing::error!(
-                        error = %e,
-                        tmp_path = %tmp_path.display(),
-                        db_path = %db_path.display(),
-                        "Failed to replace database"
-                    );
-                    let _ = fs::remove_file(&tmp_path);
-                    return ExitCode::IoErr.into(); // IOERR
-                }
-
-                // Clean up old WAL files (must append suffix, not replace extension)
-                let shm_filename = format!("{DB_NAME}{DB_SHM_SUFFIX}");
-                let wal_filename = format!("{DB_NAME}{DB_WAL_SUFFIX}");
-                let _ = fs::remove_file(project_dir.join(&shm_filename));
-                let _ = fs::remove_file(project_dir.join(&wal_filename));
+        match atomic_reindex_with_config(project_dir, config, indexer_config) {
+            Ok(stats) => {
+                tracing::info!(
+                    files = stats.files_indexed,
+                    bytes = stats.bytes_indexed,
+                    duration_secs = %format!("{:.2}", stats.duration.as_secs_f64()),
+                    "Indexing complete"
+                );
             }
             Err(e) => {
-                tracing::error!(
-                    error = %e,
-                    db_path = %tmp_path.display(),
-                    "Failed to create database"
-                );
-                let _ = fs::remove_file(&tmp_path);
-                return ExitCode::IoErr.into(); // IOERR
+                tracing::error!(error = %e, "Atomic reindex failed");
+                return match e {
+                    IndexerError::Io { .. } => ExitCode::IoErr.into(),
+                    _ => ExitCode::Software.into(),
+                };
             }
         }
     } else {
@@ -323,7 +233,6 @@ fn run_indexing(
             return ExitCode::Software.into(); // SOFTWARE
         }
 
-        let indexer_config = IndexerConfig::default();
         let mut indexer = Indexer::new(project_dir, db, indexer_config);
 
         match indexer.index_directory() {
@@ -429,9 +338,11 @@ fn run_benchmark(
 ///
 /// This function checks database health before searching and can automatically
 /// initialize or repair the database unless `no_auto_init` is set.
+#[allow(clippy::too_many_arguments)]
 fn run_search(
     project_dir: &Path,
     config: &PragmaConfig,
+    indexer_config: IndexerConfig,
     query: &[String],
     paths_only: bool,
     format: OutputFormat,
@@ -457,7 +368,9 @@ fn run_search(
                     "Auto-initializing database"
                 );
             }
-            if let Err(e) = health::auto_init(project_dir, config, quiet) {
+            if let Err(e) =
+                health::auto_init_with_config(project_dir, config, indexer_config, quiet)
+            {
                 tracing::error!(error = %e, "Auto-init failed");
                 return ExitCode::Software.into();
             }
@@ -465,7 +378,9 @@ fn run_search(
 
         DatabaseHealth::SchemaInvalid | DatabaseHealth::Corrupted if !no_auto_init => {
             tracing::warn!(health = ?health, "Database corrupted, reinitializing");
-            if let Err(e) = health::backup_and_reinit(project_dir, config, quiet) {
+            if let Err(e) =
+                health::backup_and_reinit_with_config(project_dir, config, indexer_config, quiet)
+            {
                 tracing::error!(error = %e, "Reinit failed");
                 return ExitCode::Software.into();
             }
@@ -584,6 +499,7 @@ fn run_doctor(project_dir: &Path, verbose: bool, format: OutputFormat) -> std::p
 fn run_init(
     project_dir: &Path,
     config: &PragmaConfig,
+    indexer_config: IndexerConfig,
     gitignore_only: bool,
     force: bool,
     quiet: bool,
@@ -683,7 +599,6 @@ fn run_init(
     }
 
     // Index files
-    let indexer_config = IndexerConfig::default();
     let mut indexer = Indexer::new(project_dir, db, indexer_config);
 
     // Safety: files_indexed will never exceed usize::MAX (limited by available memory)
@@ -727,7 +642,13 @@ mod tests {
         fs::write(&shm_path, "old shm").unwrap();
         fs::write(&wal_path, "old wal").unwrap();
 
-        let exit = run_indexing(dir.path(), &PragmaConfig::default(), true, true);
+        let exit = run_indexing(
+            dir.path(),
+            &PragmaConfig::default(),
+            IndexerConfig::default(),
+            true,
+            true,
+        );
         assert_eq!(exit, ExitCode::Ok.into());
         assert!(dir.path().join(DB_NAME).exists());
         assert!(!shm_path.exists());

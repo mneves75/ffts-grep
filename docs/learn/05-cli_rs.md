@@ -25,51 +25,50 @@ Think of CLI parsing like taking a restaurant order:
 
 ## 5.2 The Code: clap Derive API
 
-Let's examine the CLI structure at `cli.rs:19-82`:
+Let's examine the CLI structure at `cli.rs:53-91`:
 
 ```rust
 #[derive(Debug, Parser)]
 #[command(name = "ffts-grep", version, about, long_about = None)]
 pub struct Cli {
-    /// Query string for search (positional, captures all remaining args)
-    #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+    /// Search query (triggers search mode if provided)
+    #[arg(index = 1)]
     pub query: Vec<String>,
 
-    /// Project directory to search (default: auto-detect)
-    #[arg(long, short)]
-    pub project_dir: Option<PathBuf>,
-
-    /// Suppress status messages
-    #[arg(long, short)]
-    pub quiet: bool,
-
-    /// Output format: 'plain' or 'json'
-    #[arg(long, value_enum)]
-    pub format: Option<OutputFormat>,
-
-    /// SQLite cache size in KB (negative = KB, positive = pages)
-    #[arg(long)]
-    pub pragma_cache_size: Option<i64>,
-
-    /// SQLite mmap size in bytes (0 to disable)
-    #[arg(long)]
-    pub pragma_mmap_size: Option<u64>,
-
-    /// SQLite page size (512 to 65536, power of 2)
-    #[arg(long)]
-    pub pragma_page_size: Option<u32>,
-
-    /// SQLite busy timeout in milliseconds
-    #[arg(long)]
-    pub pragma_busy_timeout: Option<u32>,
-
-    /// SQLite synchronous mode: OFF, NORMAL, FULL, EXTRA
-    #[arg(long)]
-    pub pragma_synchronous: Option<String>,
-
-    /// Command to run
     #[command(subcommand)]
     pub command: Option<Commands>,
+
+    /// Suppress status messages (for CI/scripting)
+    #[arg(long, short = 'q')]
+    pub quiet: bool,
+
+    /// Project directory (defaults to current directory)
+    #[arg(long, env = "CLAUDE_PROJECT_DIR")]
+    pub project_dir: Option<PathBuf>,
+
+    /// Follow symlinks while indexing (disabled by default for safety)
+    #[arg(long)]
+    pub follow_symlinks: bool,
+
+    /// `SQLite` cache size in `KB` (negative) or `pages` (positive)
+    #[arg(long, default_value = "-32000", value_parser = validate_cache_size)]
+    pub pragma_cache_size: i64,
+
+    /// Memory-mapped I/O size in bytes (0 = disabled on macOS)
+    #[arg(long, default_value_t = DEFAULT_MMAP_SIZE, value_parser = validate_mmap_size)]
+    pub pragma_mmap_size: i64,
+
+    /// Database page size in bytes (must be power of 2, 512-65536)
+    #[arg(long, default_value = "4096", value_parser = validate_page_size)]
+    pub pragma_page_size: i64,
+
+    /// Busy timeout in milliseconds (0 = disabled)
+    #[arg(long, default_value = "5000", value_parser = validate_busy_timeout)]
+    pub pragma_busy_timeout: i64,
+
+    /// `SQLite` synchronous mode (`OFF`, `NORMAL`, `FULL`, `EXTRA`)
+    #[arg(long, default_value = "NORMAL", value_parser = validate_synchronous)]
+    pub pragma_synchronous: String,
 }
 ```
 
@@ -95,58 +94,61 @@ The `Parser` derive comes from clap and automatically:
 
 ## 5.3 Subcommands: The Commands Enum
 
-See `cli.rs:86-129`:
+See `cli.rs:94-138`:
 
 ```rust
 #[derive(Debug, Subcommand)]
 pub enum Commands {
-    /// Index or reindex project files
-    #[command(alias = "i")]
+    /// Index or reindex files in the project directory.
     Index {
-        /// Force full reindex
+        /// Force full reindex (atomic replace)
         #[arg(long)]
         reindex: bool,
     },
-
-    /// Search indexed files
-    #[command(alias = "s")]
+    /// Run diagnostic checks on installation health.
+    Doctor {
+        /// Verbose output for diagnostics
+        #[arg(long, short = 'v')]
+        verbose: bool,
+        /// JSON output format
+        #[arg(long)]
+        json: bool,
+    },
+    /// Initialize project with .gitignore and database.
+    Init {
+        /// Only update .gitignore, skip database creation
+        #[arg(long)]
+        gitignore_only: bool,
+        /// Force reinitialization even if already initialized
+        #[arg(long)]
+        force: bool,
+    },
+    /// Search indexed files (this is the default when a query is provided).
     Search {
+        /// Search query
+        #[arg(index = 1)]
+        query: Vec<String>,
         /// Search paths only (no content)
         #[arg(long)]
-        paths_only: bool,
-
-        /// Maximum number of results
-        #[arg(long, short)]
-        max_results: Option<u32>,
-    },
-
-    /// Run diagnostic checks
-    #[command(alias = "d", alias = "check")]
-    Doctor {
-        /// Verbose output
-        #[arg(long, short)]
-        verbose: bool,
-    },
-
-    /// Initialize project for indexing
-    #[command(aliases = ["init", "initialise"])]
-    Init {
-        /// Only update .gitignore
-        #[arg(long, short)]
-        gitignore_only: bool,
-
-        /// Force reinitialization
-        #[arg(long, short)]
-        force: bool,
+        paths: bool,
+        /// Output format
+        #[arg(long, value_enum)]
+        format: Option<OutputFormat>,
+        /// Run performance benchmark
+        #[arg(long)]
+        benchmark: bool,
+        /// Disable auto-initialization on search (fail if no database)
+        #[arg(long)]
+        no_auto_init: bool,
     },
 }
 ```
 
 ### Subcommand Features
 
-- **`#[command(alias = "i")]`** — Short form: `ffts-grep i`
-- **`#[command(aliases = ...)]`** — Multiple aliases
-- **`#[arg(long, short)]`** — Both `--verbose` and `-v` work
+- **`#[arg(index = 1)]`** — Positional query for search
+- **`#[arg(long)]`** — Long-form flags like `--paths` and `--no-auto-init`
+- **`#[arg(long, short = 'v')]`** — Short alias for verbose (`-v`)
 
 ---
 
@@ -155,14 +157,13 @@ pub enum Commands {
 See `cli.rs:11-16`:
 
 ```rust
-#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, ValueEnum)]
 pub enum OutputFormat {
     /// Human-readable plain text output
-    #[value(name = "plain")]
+    #[default]
     Plain,
 
     /// Machine-readable JSON output
-    #[value(name = "json")]
     Json,
 }
 ```
@@ -175,6 +176,9 @@ ffts-grep search "main" --format json     # ✓ Works
 ffts-grep search "main" --format xml      # ✗ Error: invalid value
 ```
 
+Note: On non-macOS platforms the `--pragma-mmap-size` default displays as `268435456`
+(256MB) instead of `0`.
+
 ---
 
 ## 5.5 Validation Functions
@@ -185,29 +189,35 @@ See `cli.rs:131-191`:
 
 ```rust
 fn validate_cache_size(s: &str) -> Result<i64, String> {
-    let value: i64 = s.parse().map_err(|_| "must be an integer")?;
+    let val: i64 = s.parse().map_err(|_| "invalid integer".to_string())?;
 
-    if value == 0 || value < -1_000_000 || value > 1_000_000 {
-        Err("must be between -1000000 and 1000000 (absolute value)".to_string())
-    } else {
-        Ok(value)
+    match val {
+        v if v > 0 => Ok(v),                              // pages
+        v if (-1_000_000..=-1_000).contains(&v) => Ok(v), // KB range
+        _ => Err("must be positive (pages) or -1000 to -1000000 (KB)".to_string()),
     }
 }
 ```
 
 ### Memory Map Size Validation
 
-```rust
-fn validate_mmap_size(s: &str) -> Result<u64, String> {
-    let value: u64 = s.parse().map_err(|_| "must be a non-negative integer")?;
+`pragma_mmap_size` defaults to `0` on macOS and `256MB` on other platforms via
+`DEFAULT_MMAP_SIZE`.
 
-    if value != 0 && !value.is_power_of_two() {
-        Err("must be 0 or a power of 2".to_string())
-    } else if value > 256 * 1024 * 1024 {
-        Err("must not exceed 256 MB".to_string())
-    } else {
-        Ok(value)
+```rust
+fn validate_mmap_size(s: &str) -> Result<i64, String> {
+    const MAX_MMAP: i64 = 256 * 1024 * 1024;
+    let val: i64 = s.parse().map_err(|_| "invalid integer".to_string())?;
+
+    if val < 0 {
+        return Err("must be >= 0".to_string());
     }
+
+    if val > MAX_MMAP {
+        return Err(format!("must be <= {MAX_MMAP} (256MB)"));
+    }
+
+    Ok(val)
 }
 ```
 
@@ -231,43 +241,42 @@ See `cli.rs:193-277`:
 
 ```rust
 impl Cli {
-    /// Parse command-line arguments (uses Cli::parse() internally)
-    #[inline]
-    pub fn parse() -> Self {
-        clap::Parser::parse()
-    }
-
-    /// Get effective project directory
+    /// Resolve the effective project directory.
     pub fn project_dir(&self) -> Result<PathBuf> {
-        // Single-pass detection: try CLI arg, then env var, then auto-detect
-        if let Some(dir) = &self.project_dir {
-            return Ok(dir.clone());
-        }
-
-        if let Ok(env_dir) = std::env::var("CLAUDE_PROJECT_DIR") {
-            return Ok(PathBuf::from(env_dir));
-        }
-
-        // Auto-detect via health module
-        let current_dir = std::env::current_dir()
-            .map_err(|e| IndexerError::Io { source: e })?;
-
-        match health::find_project_root(&current_dir) {
-            health::ProjectRoot { path, method } => {
-                tracing::debug!(method = ?method, path = %path.display(), "Auto-detected project root");
-                Ok(path)
+        match &self.project_dir {
+            Some(path) => self.expand_tilde(path),
+            None => {
+                let cwd = std::env::current_dir().map_err(|e| IndexerError::ConfigInvalid {
+                    field: "project_dir".to_string(),
+                    value: "current_dir".to_string(),
+                    reason: e.to_string(),
+                })?;
+                Ok(find_project_root(&cwd).path)
             }
         }
     }
 
-    /// Get combined query string from positional args
-    #[inline]
-    pub fn query_string(&self) -> Option<String> {
-        if self.query.is_empty() {
-            None
-        } else {
-            Some(self.query.join(" "))
+    /// Expand tilde (`~`) to home directory in path.
+    fn expand_tilde(&self, path: &Path) -> Result<PathBuf> {
+        if let Some(stripped) = path.to_str().and_then(|s| s.strip_prefix('~')) {
+            let home = dirs::home_dir().ok_or_else(|| IndexerError::ConfigInvalid {
+                field: "project_dir".to_string(),
+                value: path.to_string_lossy().to_string(),
+                reason: "Could not determine home directory".to_string(),
+            })?;
+            if stripped.is_empty() {
+                return Ok(home);
+            }
+            if stripped.starts_with('/') || stripped.starts_with('\\') {
+                return Ok(home.join(&stripped[1..]));
+            }
         }
+        Ok(path.to_path_buf())
+    }
+
+    /// Get the query as a single string (if present).
+    pub fn query_string(&self) -> Option<String> {
+        if self.query.is_empty() { None } else { Some(self.query.join(" ")) }
     }
 
     /// Check if --index was passed
@@ -295,6 +304,7 @@ impl Cli {
 }
 ```
 
+
 ---
 
 ## 5.7 The Help System
@@ -303,28 +313,82 @@ clap automatically generates help text:
 
 ```bash
 $ ffts-grep --help
-Usage: ffts-grep [OPTIONS] [QUERY]...
+Fast full-text search file indexer using SQLite FTS5
+
+A high-performance file indexer that provides sub-10ms queries after initial indexing.
+Uses SQLite FTS5 with BM25 ranking for relevant search results.
+
+Version: 0.9.0
+Repository: https://github.com/mneves75/ffts-grep
+
+SUBCOMMANDS:
+  search     Search indexed files (default when query provided)
+  index      Index or reindex the project directory
+  doctor     Run diagnostic checks on installation health
+  init       Initialize project with .gitignore and database
+
+EXIT CODES:
+  0   Success
+  1   Warnings (non-fatal issues found)
+  2   Errors (diagnostic failures)
+
+For more information, see: https://github.com/mneves75/ffts-grep
+
+Usage: 
+
+Commands:
+  index   Index or reindex files in the project directory
+  doctor  Run diagnostic checks on installation health
+  init    Initialize project with .gitignore and database
+  search  Search indexed files (this is the default when a query is provided)
+  help    Print this message or the help of the given subcommand(s)
 
 Arguments:
-  [QUERY]...    Query string for search (positional, captures all remaining args)
+  [QUERY]...
+          Search query (triggers search mode if provided)
 
 Options:
-  --project-dir <PROJECT_DIR>    Project directory to search (default: auto-detect)
-  --quiet                        Suppress status messages
-  --format <FORMAT>              Output format: 'plain' or 'json'
-  --pragma-cache-size <N>        SQLite cache size in KB
-  --pragma-mmap-size <N>         SQLite mmap size in bytes
-  --pragma-page-size <N>         SQLite page size
-  --pragma-busy-timeout <N>      SQLite busy timeout in ms
-  --pragma-synchronous <MODE>    SQLite synchronous mode
-  -h, --help                     Print help
-  -V, --version                  Print version
+  -q, --quiet
+          Suppress status messages (for CI/scripting)
 
-Subcommands:
-  index     Index or reindex project files
-  search    Search indexed files
-  doctor    Run diagnostic checks
-  init      Initialize project for indexing
+      --project-dir <PROJECT_DIR>
+          Project directory (defaults to current directory)
+          
+          [env: CLAUDE_PROJECT_DIR=]
+
+      --follow-symlinks
+          Follow symlinks while indexing (disabled by default for safety)
+
+      --pragma-cache-size <PRAGMA_CACHE_SIZE>
+          `SQLite` cache size in `KB` (negative) or `pages` (positive)
+          
+          [default: -32000]
+
+      --pragma-mmap-size <PRAGMA_MMAP_SIZE>
+          Memory-mapped I/O size in bytes (0 = disabled on macOS)
+          
+          [default: 0]
+
+      --pragma-page-size <PRAGMA_PAGE_SIZE>
+          Database page size in bytes (must be power of 2, 512-65536)
+          
+          [default: 4096]
+
+      --pragma-busy-timeout <PRAGMA_BUSY_TIMEOUT>
+          Busy timeout in milliseconds (0 = disabled)
+          
+          [default: 5000]
+
+      --pragma-synchronous <PRAGMA_SYNCHRONOUS>
+          `SQLite` synchronous mode (`OFF`, `NORMAL`, `FULL`, `EXTRA`)
+          
+          [default: NORMAL]
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
 ```
 
 ---

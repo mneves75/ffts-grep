@@ -33,7 +33,7 @@ Let's examine the actual code at `lib.rs:1-64`:
 //! ```rust,no_run
 //! use ffts_indexer::{Database, Indexer, IndexerConfig, PragmaConfig, DB_NAME};
 //!
-//! let db = Database::open(Path::new(DB_NAME), PragmaConfig::default())?;
+//! let db = Database::open(Path::new(DB_NAME), &PragmaConfig::default())?;
 //! db.init_schema()?;
 //!
 //! let mut indexer = Indexer::new(Path::new("."), db, IndexerConfig::default());
@@ -56,19 +56,21 @@ Let's examine the actual code at `lib.rs:1-64`:
 pub const DB_NAME: &str = ".ffts-index.db";
 pub const DB_SHM_NAME: &str = ".ffts-index.db-shm";
 pub const DB_WAL_NAME: &str = ".ffts-index.db-wal";
-pub const DB_TMP_NAME: &str = ".ffts-index.db-tmp";
+pub const DB_TMP_NAME: &str = ".ffts-index.db.tmp";
+pub const DB_TMP_GLOB: &str = ".ffts-index.db.tmp*";
 
 // Suffixes for file manipulation
 pub const DB_SHM_SUFFIX: &str = "-shm";
 pub const DB_WAL_SUFFIX: &str = "-wal";
-pub const DB_TMP_SUFFIX: &str = ".db.tmp";
+pub const DB_TMP_SUFFIX: &str = ".tmp";
 ```
 
 **Lines 22-40**: Database constants. These define the filenames used by the application:
 - `.ffts-index.db` — Main database file
 - `.ffts-index.db-shm` — Shared memory file (WAL mode)
 - `.ffts-index.db-wal` — Write-Ahead Log file
-- `.ffts-index.db-tmp` — Temporary file for atomic operations
+- `.ffts-index.db.tmp` — Temporary file for atomic operations
+- `.ffts-index.db.tmp*` — Gitignore pattern for unique temp suffixes
 
 ### Module Re-exports
 
@@ -203,7 +205,7 @@ Here's the complete lib.rs structure:
 //! ```rust,no_run
 //! use ffts_indexer::{Database, Indexer, IndexerConfig, PragmaConfig, DB_NAME};
 //!
-//! let db = Database::open(Path::new(DB_NAME), PragmaConfig::default())?;
+//! let db = Database::open(Path::new(DB_NAME), &PragmaConfig::default())?;
 //! db.init_schema()?;
 //!
 //! let mut indexer = Indexer::new(Path::new("."), db, IndexerConfig::default());
@@ -219,11 +221,12 @@ use std::path::Path;
 pub const DB_NAME: &str = ".ffts-index.db";
 pub const DB_SHM_NAME: &str = ".ffts-index.db-shm";
 pub const DB_WAL_NAME: &str = ".ffts-index.db-wal";
-pub const DB_TMP_NAME: &str = ".ffts-index.db-tmp";
+pub const DB_TMP_NAME: &str = ".ffts-index.db.tmp";
+pub const DB_TMP_GLOB: &str = ".ffts-index.db.tmp*";
 
 pub const DB_SHM_SUFFIX: &str = "-shm";
 pub const DB_WAL_SUFFIX: &str = "-wal";
-pub const DB_TMP_SUFFIX: &str = ".db.tmp";
+pub const DB_TMP_SUFFIX: &str = ".tmp";
 
 // Re-export modules (lib.rs:42-49)
 pub mod cli;
@@ -235,13 +238,19 @@ pub mod indexer;
 pub mod init;
 pub mod search;
 
-// Re-export types (lib.rs:51-63)
-pub use crate::db::{Database, Indexer, Searcher};
-pub use crate::doctor::Doctor;
-pub use crate::error::{Error, ExitCode, Result};
-pub use crate::health::DatabaseHealth;
-pub use crate::indexer::{IndexerConfig, IndexStats};
-pub use crate::init::{GitignoreResult, InitResult};
+// Re-export types (lib.rs:55-78)
+pub use db::{Database, PragmaConfig, SchemaCheck, SearchResult};
+pub use doctor::{
+    CheckResult, Doctor, DoctorOutput, DoctorSummary, EXPECTED_APPLICATION_ID, Severity,
+};
+pub use error::{ExitCode, IndexerError, Result};
+pub use health::{
+    DatabaseHealth, DetectionMethod, ProjectRoot, auto_init, auto_init_with_config,
+    backup_and_reinit, backup_and_reinit_with_config, check_health_fast, find_project_root,
+};
+pub use indexer::{IndexStats, Indexer, IndexerConfig};
+pub use init::{GitignoreResult, InitResult, check_gitignore, gitignore_entries, update_gitignore};
+pub use search::{SearchConfig, Searcher};
 ```
 
 ---

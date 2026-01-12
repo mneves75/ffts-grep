@@ -1,52 +1,63 @@
-# Engineering Exec Spec: Self-Critique of performance-claims-verification Plan (Current Branch)
+# Engineering Exec Spec: Repo Hardening, Toolchain, and CI
 
 ## Problem statement and goals
-The provided plan contains correctness and process assertions that are inconsistent with the current branch source code. The goal is to deliver a precise self-critique that identifies inaccurate assumptions, contradictions, missing evidence, and unnecessary steps, then propose a corrected, minimal plan focused on actual gaps in the current code (including the fact that there is no memory benchmark in `search_bench.rs`).
+The repo is a cross‑platform CLI that mutates on‑disk state, but it lacked pinned tooling and continuous validation across OS/toolchain combinations. Earlier fixes hardened indexing and documentation; the remaining risk is verification drift (toolchain differences, untested platforms, and manual memory validation). The goal is to enforce reproducible tooling, add multi‑OS CI coverage, and automate expensive memory validation on a schedule, while keeping the MSRV stable and documentation accurate.
 
-## Non-goals and constraints
-- Non-goal: Implement any code changes in this run.
-- Non-goal: Re-run benchmarks or modify README claims.
-- Constraint: No unverified claims (tests, formatting, benchmark outputs) unless evidence is captured.
-- Constraint: Use repository state as the source of truth.
+## Non‑goals and constraints
+- Non‑goal: Change search semantics, schema design, or query ranking.
+- Non‑goal: Remove ignored memory tests (they are intentionally heavy).
+- Constraint: MSRV remains Rust 1.85 (Edition 2024).
+- Constraint: CI and toolchain updates must not reduce local developer ergonomics.
 
 ## System overview (relevant modules/files)
-- rust-fts5-indexer/benches/search_bench.rs
-- rust-fts5-indexer/tests/memory_test.rs
-- rust-fts5-indexer/tests/memory_validation.rs
-- rust-fts5-indexer/Cargo.toml
-- README.md (referenced by the plan)
+- `rust-toolchain.toml` (pinned toolchain for dev and CI)
+- `.github/workflows/ci.yml` (cross‑platform test + lint)
+- `.github/workflows/memory-validation.yml` (scheduled memory validation)
+- `.github/workflows/toolchain-bump.yml` (scheduled toolchain bump PR)
+- `README.md` (toolchain/CI policy + badge)
+- Rust crate: `rust-fts5-indexer/*`
 
-## Comprehensive multi-phase TODO checklist + acceptance criteria
-### Phase 1: Validate current state vs plan assumptions
-- Read bench/test/Cargo files to confirm whether sysinfo or memory-stats is in use and whether memory validation already exists.
-- Acceptance: Explicitly list each plan step that is already implemented or no longer relevant, including existing memory validation tests and benchmark documentation.
+## Comprehensive multi‑phase TODO checklist + acceptance criteria
 
-### Phase 2: Identify unverified or incorrect claims in the plan
-- Check for claims about cargo fmt, tests, benchmark output, and README metrics that lack evidence.
-- Acceptance: Each unverified claim is marked as such; no statements imply verification without evidence.
+### Phase 1: Toolchain pinning
+1) **Pin the development toolchain**
+   - Add `rust-toolchain.toml` targeting Rust 1.92.0 with `rustfmt` + `clippy`.
+   - Acceptance: Local `cargo fmt`/`cargo clippy` are reproducible on any host.
 
-### Phase 3: Produce corrected minimal plan (if changes are still needed)
-- Only include steps that map to real gaps in the current code (e.g., removing plan steps that assume a memory benchmark exists when it does not).
-- Acceptance: Proposed steps are scoped, actionable, and map to actual code locations that still exist on the current branch.
+### Phase 2: Cross‑platform CI
+2) **Multi‑OS test matrix**
+   - Run tests on Linux/macOS/Windows for both stable and MSRV (1.85.0).
+   - Acceptance: CI detects platform regressions and MSRV drift.
 
-### Phase 4: Deliver critique artifacts
-- Provide a PR-style report focused on plan correctness issues and missing evidence.
-- Provide verification commands (not executed) for any remaining open items.
-- Acceptance: Report includes risks, mitigations, and explicit evidence policy.
+3) **Lint job**
+   - Run `cargo fmt -- --check` and `cargo clippy --all-targets -- -D warnings` on stable.
+   - Acceptance: Linting fails fast before merge.
+
+### Phase 3: Scheduled validation
+4) **Memory validation schedule**
+   - Add a weekly job that runs `memory_validation` ignored tests on Linux/macOS.
+   - Acceptance: Memory regressions are visible without slowing normal CI.
+
+5) **Automated toolchain bump PR**
+   - Add a monthly job that opens a PR with the latest stable Rust in `rust-toolchain.toml`.
+   - Acceptance: Toolchain stays current with minimal manual work.
+
+### Phase 4: Documentation
+6) **CI badge and toolchain policy**
+   - Update README with CI badge and toolchain/MSRV policy.
+   - Acceptance: Users can see CI health and expected Rust versions.
 
 ## Test plan
-- Executed in this run:
-  - cargo fmt --check
-  - cargo test
-  - cargo test --test memory_validation -- --ignored --nocapture
-  - cargo clippy --all-targets -- -D warnings
-  - cargo bench --bench search_bench
+- `cd rust-fts5-indexer && cargo fmt -- --check`
+- `cd rust-fts5-indexer && cargo test`
+- `cd rust-fts5-indexer && cargo clippy --all-targets -- -D warnings`
+- Scheduled: `cargo test --test memory_validation -- --ignored --nocapture`
 
 ## Risks and mitigations
-- Risk: Plan references outdated dependencies; mitigation is to diff plan assumptions against current files.
-- Risk: Plan asserts benchmark outputs without evidence; mitigation is to require command output before claims.
-- Risk: Plan includes duplicate or conflicting phases; mitigation is to consolidate into a single corrected plan.
+- **CI runtime increase**: mitigated by keeping lint separate and memory tests scheduled only.
+- **Toolchain drift**: mitigated by monthly PR automation.
+- **Platform‑specific failures**: mitigated by Windows/macOS/Linux coverage.
 
 ## Rollout/rollback plan
-- No rollout required; this is a critique-only deliverable.
-- If changes are later made, rollback is a standard git revert of those commits.
+- Rollout: merge after CI green on the new matrix.
+- Rollback: revert workflow/toolchain commits; no data migrations required.
