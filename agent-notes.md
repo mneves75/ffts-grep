@@ -283,3 +283,6 @@
 [2026-01-12 20:53:07 -0300] Verification after ENGINEERING_SPEC update.
 - Commands: cd rust-fts5-indexer && cargo fmt -- --check; cargo test; cargo clippy --all-targets -- -D warnings.
 - Results: fmt clean; tests passed (167 lib + 1 main + 46 integration + 8 logging + 2 memory_test + 2 perf; 2 ignored memory_validation; doctests passed); clippy clean.
+
+[2026-01-12 20:54:38 -0300] Committed and pushed changes.
+- Commands: git add .; git commit -m "chore: add ci, toolchain, and memory validation"; git push.
