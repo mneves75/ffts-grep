@@ -124,3 +124,9 @@
 - Decision: Update report evidence with benchmark timings
 - Commands: cd rust-fts5-indexer && cargo bench --bench search_bench
 - Open questions: None
+2026-01-12 11:28:19 -0300
+- Step: Commit agent notes update for benchmark run
+- Result: Commit created: "Update agent notes with benchmark run"
+- Decision: Leave note uncommitted pending final output
+- Commands: git add agent-notes.md; git commit -m "Update agent notes with benchmark run"
+- Open questions: None
