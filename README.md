@@ -192,6 +192,13 @@ rust-fts5-indexer/src/
 | Memory (indexing) | < 100MB | 40-80MB |
 | Memory (idle) | < 10MB | 5-8MB |
 
+To validate memory usage on your machine, run the ignored integration tests:
+
+```bash
+cd rust-fts5-indexer
+cargo test --test memory_validation -- --ignored --nocapture
+```
+
 ## Claude Code Integration
 
 [Claude Code](https://claude.com/product/claude-code) is Anthropic's agentic coding tool that lives in your terminal. This indexer provides fast file suggestions when Claude Code needs to find relevant files in your codebase.
