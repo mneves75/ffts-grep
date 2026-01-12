@@ -473,7 +473,8 @@ impl Database {
                        length(filename)
                    LIMIT ?2";
 
-        let mut stmt = self.conn.prepare_cached(sql).map_err(|e| IndexerError::Database { source: e })?;
+        let mut stmt =
+            self.conn.prepare_cached(sql).map_err(|e| IndexerError::Database { source: e })?;
 
         let paths: Vec<String> = stmt
             .query_map(rusqlite::params![search_term, limit], |row| row.get::<_, String>(0))

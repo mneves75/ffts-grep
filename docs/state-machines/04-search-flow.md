@@ -81,11 +81,9 @@ flowchart TD
     F -->|no| G[WrongApplicationId]
     F -->|yes| H{Schema complete?}
     H -->|no| I[SchemaInvalid]
-    H -->|yes| J{FTS5 integrity OK?}
-    J -->|no| K[Corrupted]
-    J -->|yes| L{file_count > 0?}
-    L -->|no| M[Empty]
-    L -->|yes| N[Healthy]
+    H -->|yes| J{file_count > 0?}
+    J -->|no| K[Empty]
+    J -->|yes| L[Healthy]
 ```
 
 ## Query Sanitization
@@ -103,22 +101,23 @@ flowchart LR
 
 ```sql
 -- paths_only = false (full search)
-SELECT path, bm25(files_fts, 50.0, 1.0)
+SELECT path, bm25(files_fts, 100.0, 50.0, 1.0)
 FROM files_fts
 WHERE files_fts MATCH ?1
-ORDER BY bm25(files_fts, 50.0, 1.0)
+ORDER BY bm25(files_fts, 100.0, 50.0, 1.0)
 LIMIT ?2
 
 -- paths_only = true
-SELECT path, bm25(files_fts, 50.0, 1.0)
+SELECT path, bm25(files_fts, 100.0, 50.0, 1.0)
 FROM files_fts
 WHERE path MATCH ?1  -- Only match path column
-ORDER BY bm25(files_fts, 50.0, 1.0)
+ORDER BY bm25(files_fts, 100.0, 50.0, 1.0)
 LIMIT ?2
 ```
 
 | Column | BM25 Weight | Effect |
 |--------|-------------|--------|
+| filename | 100.0 | Exact filename matches rank highest |
 | path | 50.0 | Path matches ranked 50x higher |
 | content | 1.0 | Baseline content ranking |
 
@@ -150,19 +149,19 @@ sequenceDiagram
     participant FS as Filesystem
 
     Note over Search,FS: Auto-Init (Missing/Empty)
-    Search->>Health: auto_init(project_dir, config, quiet)
+    Search->>Health: auto_init_with_config(project_dir, config, indexer_config, quiet)
     Health->>DB: Database::open()
     Health->>DB: init_schema()
     Health->>DB: Indexer::new() + index_directory()
-    Health-->>Search: Ok(())
+    Health-->>Search: Ok(IndexStats)
 
     Note over Search,FS: Backup-Reinit (SchemaInvalid/Corrupted)
-    Search->>Health: backup_and_reinit(project_dir, config, quiet)
-    Health->>FS: Rename .ffts-index.db → .ffts-index.db.bak
+    Search->>Health: backup_and_reinit_with_config(project_dir, config, indexer_config, quiet)
+    Health->>FS: Rename .ffts-index.db → .ffts-index.db.backup.{timestamp}
     Health->>DB: Database::open() (creates new)
     Health->>DB: init_schema()
     Health->>DB: Indexer::new() + index_directory()
-    Health-->>Search: Ok(())
+    Health-->>Search: Ok(IndexStats)
 ```
 
 ## Exit Code Mapping
@@ -171,9 +170,9 @@ sequenceDiagram
 |--------------|-----------|-----------|
 | Healthy | N/A | Continue |
 | Missing/Empty | enabled | Continue (after init) |
-| Missing/Empty | disabled | DATAERR (65) |
+| Missing/Empty | disabled | DataErr (2) |
 | SchemaInvalid/Corrupted | enabled | Continue (after reinit) |
-| SchemaInvalid/Corrupted | disabled | DATAERR (65) |
-| WrongApplicationId | N/A | DATAERR (65) |
-| Unreadable | N/A | NOPERM (77) |
-| Unknown (_) | N/A | SOFTWARE (70) |
+| SchemaInvalid/Corrupted | disabled | DataErr (2) |
+| WrongApplicationId | N/A | DataErr (2) |
+| Unreadable | N/A | NoPerm (5) |
+| Unknown (_) | N/A | Software (1) |

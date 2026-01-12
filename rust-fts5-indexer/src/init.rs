@@ -12,20 +12,51 @@
 use std::collections::HashSet;
 use std::fs;
 use std::io::Write;
+#[cfg(windows)]
+use std::os::windows::ffi::OsStrExt;
 use std::path::Path;
 
 use crate::error::Result;
-use crate::{DB_NAME, DB_SHM_NAME, DB_TMP_NAME, DB_WAL_NAME};
+use crate::{DB_NAME, DB_SHM_NAME, DB_TMP_GLOB, DB_WAL_NAME};
 
 /// Required gitignore entries for ffts-grep.
 /// Returns a static array with all database file patterns.
 #[must_use]
 pub const fn gitignore_entries() -> [&'static str; 4] {
-    [DB_NAME, DB_SHM_NAME, DB_WAL_NAME, DB_TMP_NAME]
+    [DB_NAME, DB_SHM_NAME, DB_WAL_NAME, DB_TMP_GLOB]
 }
 
 /// Header comment for gitignore section.
 const GITIGNORE_HEADER: &str = "# ffts-grep database files (auto-generated)";
+
+#[cfg(windows)]
+fn atomic_replace(from: &Path, to: &Path) -> std::io::Result<()> {
+    use windows_sys::Win32::Storage::FileSystem::{
+        MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH, MoveFileExW,
+    };
+
+    let from_wide: Vec<u16> = from.as_os_str().encode_wide().chain(Some(0)).collect();
+    let to_wide: Vec<u16> = to.as_os_str().encode_wide().chain(Some(0)).collect();
+
+    let result = unsafe {
+        MoveFileExW(
+            from_wide.as_ptr(),
+            to_wide.as_ptr(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
+        )
+    };
+
+    if result == 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn atomic_replace(from: &Path, to: &Path) -> std::io::Result<()> {
+    fs::rename(from, to)
+}
 
 /// Result of gitignore update operation.
 #[derive(Debug, PartialEq, Eq)]
@@ -132,8 +163,8 @@ pub fn update_gitignore(project_dir: &Path) -> Result<GitignoreResult> {
 
     drop(file); // Ensure file is closed before rename
 
-    // Atomic rename
-    fs::rename(&tmp_path, &gitignore_path)?;
+    // Atomic rename (Windows requires replace strategy)
+    atomic_replace(&tmp_path, &gitignore_path)?;
 
     let count = missing.len();
     if file_existed {
@@ -232,7 +263,7 @@ mod tests {
         let missing = check_gitignore(dir.path());
         assert_eq!(missing.len(), 2);
         assert!(missing.contains(&DB_WAL_NAME));
-        assert!(missing.contains(&DB_TMP_NAME));
+        assert!(missing.contains(&DB_TMP_GLOB));
     }
 
     #[test]
@@ -308,8 +339,8 @@ mod tests {
 
         // Count occurrences of DB_NAME (should only appear once)
         let count = content.matches(DB_NAME).count();
-        // The base entry appears, plus 3 more with suffixes
-        assert_eq!(count, 4); // base + shm + wal + tmp
+        // The base entry appears, plus 3 more with suffixes/glob
+        assert_eq!(count, 4); // base + shm + wal + tmp*
     }
 
     #[test]
@@ -375,13 +406,13 @@ mod tests {
     fn test_gitignore_entries_match_constants() {
         // Verify that hardcoded strings in gitignore_entries() match the expected
         // DB_NAME + suffix pattern. This guards against divergence.
-        use crate::{DB_NAME, DB_SHM_SUFFIX, DB_TMP_SUFFIX, DB_WAL_SUFFIX};
+        use crate::{DB_NAME, DB_SHM_SUFFIX, DB_TMP_GLOB, DB_WAL_SUFFIX};
 
         let entries = gitignore_entries();
 
         assert_eq!(entries[0], DB_NAME);
         assert_eq!(entries[1], format!("{DB_NAME}{DB_SHM_SUFFIX}"));
         assert_eq!(entries[2], format!("{DB_NAME}{DB_WAL_SUFFIX}"));
-        assert_eq!(entries[3], format!("{DB_NAME}{DB_TMP_SUFFIX}"));
+        assert_eq!(entries[3], DB_TMP_GLOB);
     }
 }

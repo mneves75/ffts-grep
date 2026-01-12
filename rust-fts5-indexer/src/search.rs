@@ -75,7 +75,8 @@ impl<'a> Searcher<'a> {
         // Phase A: Filename CONTAINS matches (absolute priority)
         // Use first token for filename search (most relevant for file lookup)
         let filename_query = sanitized.split_whitespace().next().unwrap_or(&sanitized);
-        let filename_matches = self.db.search_filename_contains(filename_query, self.config.max_results)?;
+        let filename_matches =
+            self.db.search_filename_contains(filename_query, self.config.max_results)?;
 
         let mut seen: HashSet<String> = HashSet::with_capacity(max);
         let mut results: Vec<SearchResult> = Vec::with_capacity(max);
@@ -165,11 +166,7 @@ impl<'a> Searcher<'a> {
         let sanitized = result.split_whitespace().collect::<Vec<_>>().join(" ");
 
         // Apply auto-prefix: append '*' to enable FTS5 prefix matching
-        if auto_prefix && !sanitized.is_empty() {
-            format!("{sanitized}*")
-        } else {
-            sanitized
-        }
+        if auto_prefix && !sanitized.is_empty() { format!("{sanitized}*") } else { sanitized }
     }
 
     /// Format and output search results.

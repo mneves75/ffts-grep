@@ -73,7 +73,7 @@ flowchart TD
         I[.ffts-index.db]
         J[.ffts-index.db-shm]
         K[.ffts-index.db-wal]
-        L[.ffts-index.db.tmp]
+        L[.ffts-index.db.tmp*]
     end
 
     H --> M{All present?}
@@ -84,7 +84,7 @@ flowchart TD
     P --> Q["Add header comment<br/># ffts-grep index files"]
     Q --> R[Add missing entries]
     R --> S[Write to .gitignore.tmp]
-    S --> T[fs::rename tmp -> .gitignore]
+    S --> T[atomic_replace tmp -> .gitignore]
 
     T --> U{File existed before?}
     U -->|yes| V["GitignoreResult::Updated(N)"]

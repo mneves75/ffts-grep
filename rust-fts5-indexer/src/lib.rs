@@ -39,6 +39,9 @@ pub const DB_WAL_NAME: &str = ".ffts-index.db-wal";
 /// Temporary file name during reindex.
 pub const DB_TMP_NAME: &str = ".ffts-index.db.tmp";
 
+/// Temporary file glob for gitignore entries (covers suffix variants).
+pub const DB_TMP_GLOB: &str = ".ffts-index.db.tmp*";
+
 pub mod cli;
 pub mod db;
 pub mod doctor;
@@ -55,8 +58,8 @@ pub use doctor::{
 };
 pub use error::{ExitCode, IndexerError, Result};
 pub use health::{
-    DatabaseHealth, DetectionMethod, ProjectRoot, auto_init, backup_and_reinit,
-    check_health_fast, find_project_root,
+    DatabaseHealth, DetectionMethod, ProjectRoot, auto_init, auto_init_with_config,
+    backup_and_reinit, backup_and_reinit_with_config, check_health_fast, find_project_root,
 };
 pub use indexer::{IndexStats, Indexer, IndexerConfig};
 pub use init::{GitignoreResult, InitResult, check_gitignore, gitignore_entries, update_gitignore};

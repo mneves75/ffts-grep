@@ -35,7 +35,7 @@ pub struct IndexerConfig {
     /// Files per transaction batch
     pub batch_size: usize,
 
-    /// Follow symlinks (unsafe by default)
+    /// Follow symlinks (disabled by default)
     pub follow_symlinks: bool,
 }
 
@@ -44,7 +44,7 @@ impl Default for IndexerConfig {
         Self {
             max_file_size: 1024 * 1024, // 1MB default
             batch_size: 500,
-            follow_symlinks: true,
+            follow_symlinks: false,
         }
     }
 }
@@ -54,7 +54,7 @@ impl Default for IndexerConfig {
 |---------|---------|---------|
 | `max_file_size` | 1MB | Skip large files |
 | `batch_size` | 500 | Transaction batching |
-| `follow_symlinks` | true | Include symlinked files |
+| `follow_symlinks` | false | Include symlinked files (opt-in) |
 
 ---
 
@@ -107,6 +107,7 @@ pub fn index_directory(&mut self) -> Result<IndexStats> {
     let walk = WalkBuilder::new(&self.root)
         .standard_filters(true)  // Respect .gitignore
         .same_file_system(true)  // Don't cross filesystems
+        .follow_links(self.config.follow_symlinks) // Opt-in symlink traversal
         .build();
 
     let mut stats = IndexStats::default();
@@ -190,29 +191,42 @@ fn process_entry(&self, entry: &DirEntry, stats: &mut IndexStats) -> Result<bool
         return Ok(false);
     }
 
-    // Skip directories (only index files)
-    if entry.file_type().is_some_and(|ft| ft.is_dir()) {
-        return Ok(false);
-    }
+    // Handle symlinks (symlink_metadata avoids following links)
+    let is_symlink = match fs::symlink_metadata(path) {
+        Ok(metadata) => metadata.file_type().is_symlink(),
+        Err(e) => {
+            tracing::warn!(path = %path.display(), error = %e, "Failed to read symlink metadata");
+            stats.files_skipped += 1;
+            return Ok(false);
+        }
+    };
 
-    // Handle symlinks
-    if let Some(ft) = entry.file_type() {
-        if ft.is_symlink() {
-            if !self.config.follow_symlinks {
+    if is_symlink {
+        if !self.config.follow_symlinks {
+            stats.files_skipped += 1;
+            return Ok(false);
+        }
+
+        // Verify symlink stays within project root
+        if let Ok(resolved) = fs::canonicalize(path) {
+            if !self.is_within_root(&resolved) {
+                tracing::warn!(
+                    path = %path.display(),
+                    resolved = %resolved.display(),
+                    "Skipping symlink that escapes project root"
+                );
                 stats.files_skipped += 1;
                 return Ok(false);
             }
-
-            // Verify symlink stays within project root
-            if let Ok(resolved) = fs::canonicalize(path) {
-                if !self.is_within_root(&resolved) {
-                    tracing::warn!(path = %path.display(), resolved = %resolved.display(),
-                        "Skipping symlink that escapes project root");
-                    stats.files_skipped += 1;
-                    return Ok(false);
-                }
-            }
+        } else {
+            stats.files_skipped += 1;
+            return Ok(false);
         }
+    }
+
+    // Skip directories (only index files)
+    if entry.file_type().is_some_and(|ft| ft.is_dir()) {
+        return Ok(false);
     }
 
     // Get file metadata
@@ -265,15 +279,23 @@ fn read_file_content(&self, path: &Path, size: u64) -> Result<String> {
     }
 
     // Open file
-    let mut file = File::open(path)
+    let file = File::open(path)
         .map_err(|e| IndexerError::Io { source: e })?;
 
+    let max_size = self.config.max_file_size;
     // Pre-allocate buffer with known capacity
-    let mut bytes = Vec::with_capacity(size as usize);
+    let capacity = std::cmp::min(size, max_size);
+    let mut bytes = Vec::with_capacity(capacity as usize);
 
-    // Read entire file
-    file.read_to_end(&mut bytes)
+    // Read at most max_size + 1 bytes to detect concurrent growth
+    let read_limit = max_size.saturating_add(1);
+    file.take(read_limit)
+        .read_to_end(&mut bytes)
         .map_err(|e| IndexerError::Io { source: e })?;
+
+    if bytes.len() as u64 > max_size {
+        return Err(IndexerError::FileTooLarge { size: bytes.len() as u64, max: max_size });
+    }
 
     // Convert to String with UTF-8 validation
     String::from_utf8(bytes)
@@ -284,7 +306,7 @@ fn read_file_content(&self, path: &Path, size: u64) -> Result<String> {
 ### Why Pre-allocate?
 
 ```rust
-let mut bytes = Vec::with_capacity(size as usize);
+let mut bytes = Vec::with_capacity(capacity as usize);
 ```
 
 This tells Rust: "We're going to need `size` bytes." Rust allocates once, avoiding reallocations as we read.
@@ -299,6 +321,7 @@ See `indexer.rs:101-105`:
 let walk = WalkBuilder::new(&self.root)
     .standard_filters(true)  // Enable .gitignore support
     .same_file_system(true)  // Don't cross filesystem boundaries
+    .follow_links(self.config.follow_symlinks) // Opt-in symlink traversal
     .build();
 ```
 
@@ -344,8 +367,17 @@ See `indexer.rs:395-440`:
 ```rust
 /// Force a full reindex by creating a new database.
 pub fn atomic_reindex(root: &Path, config: &PragmaConfig) -> Result<IndexStats> {
+    atomic_reindex_with_config(root, config, IndexerConfig::default())
+}
+
+/// Atomic reindex with explicit indexer configuration.
+pub fn atomic_reindex_with_config(
+    root: &Path,
+    config: &PragmaConfig,
+    indexer_config: IndexerConfig,
+) -> Result<IndexStats> {
     let db_path = root.join(DB_NAME);
-    let tmp_path = db_path.with_extension(DB_TMP_SUFFIX.trim_start_matches('.'));
+    let tmp_path = root.join(DB_TMP_NAME);
 
     // Clean up any existing temp file
     let _ = fs::remove_file(&tmp_path);
@@ -354,14 +386,9 @@ pub fn atomic_reindex(root: &Path, config: &PragmaConfig) -> Result<IndexStats> 
     let db = Database::open(&tmp_path, config)?;
     db.init_schema()?;
 
-    // Index all files
-    let indexer_config = IndexerConfig::default();
+    // Index all files (index_directory runs ANALYZE + optimize passes)
     let mut indexer = Indexer::new(root, db, indexer_config);
     let stats = indexer.index_directory()?;
-
-    // Optimize FTS5
-    indexer.db.optimize_fts()?;
-    indexer.db.optimize()?;
 
     // Checkpoint WAL to main file
     indexer.db.conn().query_row(
@@ -390,11 +417,11 @@ pub fn atomic_reindex(root: &Path, config: &PragmaConfig) -> Result<IndexStats> 
 ```
 
 The atomic reindex process:
-1. Create new database at `.tmp.db`
+1. Create new database at `.ffts-index.db.tmp`
 2. Index all files
 3. Checkpoint WAL (move all changes to main file)
 4. Close connection
-5. Atomic rename `.tmp.db` → `.ffts-index.db`
+5. Atomic rename `.ffts-index.db.tmp` → `.ffts-index.db`
 6. Clean up old WAL files
 
 ---

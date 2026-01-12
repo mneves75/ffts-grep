@@ -326,7 +326,7 @@ file.flush()?;
 drop(file);
 
 // Atomic rename (either complete or file unchanged)
-fs::rename(&tmp_path, &gitignore_path)?;
+atomic_replace(&tmp_path, &gitignore_path)?;
 ```
 
 ### Why This Works

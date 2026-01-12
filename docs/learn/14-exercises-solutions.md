@@ -582,7 +582,7 @@ $ cat .gitignore
 # .ffts-index.db
 # .ffts-index.db-shm
 # .ffts-index.db-wal
-# .ffts-index.db-tmp
+# .ffts-index.db.tmp*
 ```
 
 ---
