@@ -100,3 +100,15 @@
 - Decision: Ask whether to add untracked files (ENGINEERING_SPEC.md, agent-notes.md, memory_validation.rs) to version control
 - Commands: git diff --stat
 - Open questions: Should untracked files be added/committed?
+2026-01-12 11:22:39 -0300
+- Step: Stage changes for review
+- Result: Staged README.md, ENGINEERING_SPEC.md, agent-notes.md, rust-fts5-indexer/tests/memory_validation.rs
+- Decision: Await instruction on commit message
+- Commands: git add README.md ENGINEERING_SPEC.md agent-notes.md rust-fts5-indexer/tests/memory_validation.rs
+- Open questions: Do you want a commit created, and with what message?
+2026-01-12 11:23:05 -0300
+- Step: Commit staged changes
+- Result: Commit created: "Add memory validation docs and tests"
+- Decision: Proceed to final report
+- Commands: git commit -m "Add memory validation docs and tests"
+- Open questions: None
