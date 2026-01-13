@@ -957,10 +957,14 @@ mod tests {
             let _ = check_health_fast(dir.path());
         }
         let elapsed = start.elapsed();
+        let budget_ms = if std::env::var_os("CI").is_some() { 1500 } else { 500 };
 
-        // 100 checks should complete in <500ms (conservative for CI variability)
+        // 100 checks should complete quickly; allow extra headroom on CI runners.
         // Production target: <100μs each = <10ms for 100 iterations
-        assert!(elapsed.as_millis() < 500, "Health check too slow: {elapsed:?} for 100 iterations");
+        assert!(
+            elapsed.as_millis() < budget_ms,
+            "Health check too slow: {elapsed:?} for 100 iterations (budget {budget_ms}ms)"
+        );
     }
 
     #[test]
@@ -975,12 +979,13 @@ mod tests {
             let _ = find_project_root(&deep);
         }
         let elapsed = start.elapsed();
+        let budget_ms = if std::env::var_os("CI").is_some() { 1500 } else { 500 };
 
-        // 1000 lookups should complete in <500ms (conservative for CI variability)
+        // 1000 lookups should complete quickly; allow extra headroom on CI runners.
         // Production target: <100μs each = <100ms for 1000 iterations
         assert!(
-            elapsed.as_millis() < 500,
-            "Project root detection too slow: {elapsed:?} for 1000 iterations"
+            elapsed.as_millis() < budget_ms,
+            "Project root detection too slow: {elapsed:?} for 1000 iterations (budget {budget_ms}ms)"
         );
     }
 }

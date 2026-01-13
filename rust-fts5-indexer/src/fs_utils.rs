@@ -3,8 +3,17 @@ use std::io;
 use std::path::Path;
 
 pub(crate) fn sync_file(path: &Path) -> io::Result<()> {
-    let file = fs::File::open(path)?;
-    file.sync_all()
+    #[cfg(windows)]
+    {
+        let file = fs::OpenOptions::new().read(true).write(true).open(path)?;
+        file.sync_all()
+    }
+
+    #[cfg(not(windows))]
+    {
+        let file = fs::File::open(path)?;
+        file.sync_all()
+    }
 }
 
 pub(crate) fn sync_parent_dir(path: &Path) -> io::Result<()> {
