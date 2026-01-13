@@ -369,3 +369,7 @@
 - Step: Committed bounds checks + docs updates, pushed to origin/main, and retagged v0.10 to point at the new release commit.
 - Commands executed: git commit -m "Harden indexer bounds and docs"; git push; git tag -f -a v0.10 -m "Release 0.10.0"; git push --force origin v0.10.
 - Outcome: origin/main and v0.10 tag now point at commit f3aa966.
+## 2026-01-13 00:39:07 -0300
+- Step: Updated ENGINEERING_SPEC/PR_REPORT/changelogs for safety guards and retagged v0.10 after pushing.
+- Commands executed: git commit -m "Update specs and changelogs"; git push; git tag -f -a v0.10 -m "Release 0.10.0"; git push --force origin v0.10.
+- Outcome: origin/main and v0.10 tag now point at commit c716976.
