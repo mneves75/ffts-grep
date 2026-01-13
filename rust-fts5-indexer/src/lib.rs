@@ -53,6 +53,7 @@ pub const DB_TMP_NAME: &str = ".ffts-index.db.tmp";
 pub const DB_TMP_GLOB: &str = ".ffts-index.db.tmp*";
 
 pub mod cli;
+pub mod constants;
 pub mod db;
 pub mod doctor;
 pub mod error;
@@ -62,10 +63,9 @@ pub mod init;
 pub mod search;
 
 pub use cli::OutputFormat;
+pub use constants::EXPECTED_APPLICATION_ID;
 pub use db::{Database, PragmaConfig, SchemaCheck, SearchResult};
-pub use doctor::{
-    CheckResult, Doctor, DoctorOutput, DoctorSummary, EXPECTED_APPLICATION_ID, Severity,
-};
+pub use doctor::{CheckResult, Doctor, DoctorOutput, DoctorSummary, Severity};
 pub use error::{ExitCode, IndexerError, Result};
 pub use health::{
     DatabaseHealth, DetectionMethod, ProjectRoot, auto_init, auto_init_with_config,

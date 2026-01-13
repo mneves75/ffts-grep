@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Release tooling**: Automated checklist, version consistency check, and release-note extraction scripts
 - **CI guardrail**: Version badge consistency job for README vs Cargo.toml
 - **Safety guards**: Checked conversions for file mtime/size to avoid overflow
+- **Constants**: Centralized application_id constants to avoid casting surprises
 
 ### Fixed
 

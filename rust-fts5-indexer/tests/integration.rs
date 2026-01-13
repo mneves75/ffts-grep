@@ -960,7 +960,7 @@ fn test_conditional_transaction_threshold_behavior() {
 /// This tests the health check flow that gates search operations.
 #[test]
 fn test_health_state_machine_transitions() {
-    use ffts_indexer::doctor::EXPECTED_APPLICATION_ID;
+    use ffts_indexer::EXPECTED_APPLICATION_ID;
     use ffts_indexer::health::{DatabaseHealth, check_health_fast};
 
     // State 1: Missing - no database file

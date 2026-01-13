@@ -3,11 +3,8 @@ use rusqlite::ToSql;
 use std::path::Path;
 use std::time::Duration;
 
+use crate::constants::APPLICATION_ID_I32;
 use crate::error::{IndexerError, Result};
-
-const APPLICATION_ID_U32: u32 = 0xA17E_6D42;
-// SQLite stores application_id as signed 32-bit integer; keep the bit pattern intact.
-const APPLICATION_ID_I32: i32 = i32::from_ne_bytes(APPLICATION_ID_U32.to_ne_bytes());
 
 /// Search result returned by FTS5 queries.
 #[derive(Debug, Clone)]
@@ -1230,7 +1227,7 @@ mod tests {
         let (_dir, db) = create_test_db();
 
         let app_id = db.get_application_id();
-        assert_eq!(app_id, Some(0xA17E_6D42));
+        assert_eq!(app_id, Some(crate::constants::EXPECTED_APPLICATION_ID));
     }
 
     #[test]

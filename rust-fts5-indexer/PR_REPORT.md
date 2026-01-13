@@ -32,6 +32,7 @@
 - `src/db.rs`: new `prune_missing_files` method.
 - `src/indexer.rs`: prune missing files post-index.
 - `src/indexer.rs`: checked u64→i64 conversions for mtime/size with overflow tests.
+- `src/constants.rs`: centralized application_id constants.
 - `src/db.rs`: application_id stored via a dedicated i32 constant (no cast at pragma site).
 - `src/bin/release_tools.rs`: release tooling CLI.
 - `tests/release_tools.rs`: cross-platform release tooling tests.

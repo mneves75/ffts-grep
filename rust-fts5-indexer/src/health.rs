@@ -45,8 +45,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::constants::EXPECTED_APPLICATION_ID;
 use crate::db::{Database, PragmaConfig};
-use crate::doctor::EXPECTED_APPLICATION_ID;
 use crate::error::Result;
 use crate::indexer::{IndexStats, Indexer, IndexerConfig};
 use crate::{DB_NAME, DB_TMP_SUFFIX, init};

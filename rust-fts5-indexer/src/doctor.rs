@@ -16,12 +16,10 @@ use std::io::Write;
 use std::path::Path;
 
 use crate::cli::OutputFormat;
+use crate::constants::EXPECTED_APPLICATION_ID;
 use crate::db::Database;
 use crate::init;
 use crate::{DB_NAME, DB_SHM_SUFFIX, DB_WAL_SUFFIX};
-
-/// Expected application ID for ffts-grep databases.
-pub const EXPECTED_APPLICATION_ID: u32 = 0xA17E_6D42;
 
 /// Check severity levels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]

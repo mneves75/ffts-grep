@@ -373,3 +373,11 @@
 - Step: Updated ENGINEERING_SPEC/PR_REPORT/changelogs for safety guards and retagged v0.10 after pushing.
 - Commands executed: git commit -m "Update specs and changelogs"; git push; git tag -f -a v0.10 -m "Release 0.10.0"; git push --force origin v0.10.
 - Outcome: origin/main and v0.10 tag now point at commit c716976.
+## 2026-01-13 00:43:06 -0300
+- Step: Centralized application_id constants in new constants module, updated db/doctor/health integration and docs; updated specs/reports/changelogs to reflect the change.
+- Commands executed: rg EXPECTED_APPLICATION_ID; apply_patch edits.
+- Next: run fmt/tests/clippy, then stage/commit/push and retag v0.10.
+## 2026-01-13 00:44:00 -0300
+- Step: Ran fmt/tests/clippy; fixed clippy doc-comment error in doctor.rs and re-ran clippy clean.
+- Commands executed: cd rust-fts5-indexer && cargo fmt; cargo test; cargo clippy --all-targets -- -D warnings.
+- Outcome: All tests passed; clippy clean; memory_validation ignored as expected.
