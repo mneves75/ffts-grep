@@ -348,3 +348,7 @@
 - Step: Staged changes, committed release 0.10.0, pushed to origin/main, and force-updated tag v0.10 to the new commit.
 - Commands executed: git add -A; git commit -m "Release 0.10.0"; git push; git tag -f -a v0.10 -m "Release 0.10.0"; git push --force origin v0.10.
 - Outcome: origin/main and v0.10 tag now point at commit c872afc.
+## 2026-01-13 00:23:22 -0300
+- Step: Committed agent-notes update, pushed, and retagged v0.10 to include the notes.
+- Commands executed: git commit -m "Update agent notes"; git push; git tag -f -a v0.10 -m "Release 0.10.0"; git push --force origin v0.10.
+- Outcome: origin/main and v0.10 tag now point at commit a45aa58.
