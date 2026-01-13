@@ -549,6 +549,7 @@ mod tests {
 
         let db = Database::open(&db_path, &config).unwrap();
         db.init_schema().unwrap();
+        drop(db);
 
         let shm_path = dir.path().join(format!("{DB_NAME}{DB_SHM_SUFFIX}"));
         let wal_path = dir.path().join(format!("{DB_NAME}{DB_WAL_SUFFIX}"));
