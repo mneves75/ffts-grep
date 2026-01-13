@@ -326,3 +326,6 @@
 ## 2026-01-12 21:18:20 -0300
 - Step: Ran web research to anchor 2025+ best-practice citations (Rust 1.92, 1.85/Edition 2024, Cargo manifest rust-version, resolver 3).
 - Commands executed: date; web.run search/open (see assistant message).
+## 2026-01-12 21:21:24 -0300
+- Step: Bumped version to 0.10.0, updated changelogs/README/docs, and ran full test suite.
+- Commands executed: cargo test (rust-fts5-indexer) — all tests passed; memory_validation ignored as expected.

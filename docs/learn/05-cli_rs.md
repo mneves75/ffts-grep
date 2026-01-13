@@ -318,7 +318,7 @@ Fast full-text search file indexer using SQLite FTS5
 A high-performance file indexer that provides sub-10ms queries after initial indexing.
 Uses SQLite FTS5 with BM25 ranking for relevant search results.
 
-Version: 0.9.0
+Version: 0.10.0
 Repository: https://github.com/mneves75/ffts-grep
 
 SUBCOMMANDS:
