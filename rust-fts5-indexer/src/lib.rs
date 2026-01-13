@@ -29,15 +29,24 @@
 //! ```
 
 /// Default database filename.
+///
+/// This file is created in the project root and stores the FTS5 index.
+/// Location: `<project_root>/.ffts-index.db`
 pub const DB_NAME: &str = ".ffts-index.db";
 
 /// WAL mode shm file suffix.
+///
+/// Shared memory file used by WAL mode for concurrent readers.
 pub const DB_SHM_SUFFIX: &str = "-shm";
 
 /// WAL mode wal file suffix.
+///
+/// Write-Ahead Log file containing committed transactions.
 pub const DB_WAL_SUFFIX: &str = "-wal";
 
 /// Temporary file suffix during reindex.
+///
+/// Used for atomic reindex operations to build new index before replacing.
 pub const DB_TMP_SUFFIX: &str = ".tmp";
 
 /// WAL mode shm file name.
@@ -50,6 +59,8 @@ pub const DB_WAL_NAME: &str = ".ffts-index.db-wal";
 pub const DB_TMP_NAME: &str = ".ffts-index.db.tmp";
 
 /// Temporary file glob for gitignore entries (covers suffix variants).
+///
+/// This glob matches all temporary database files created during reindex.
 pub const DB_TMP_GLOB: &str = ".ffts-index.db.tmp*";
 
 pub mod cli;

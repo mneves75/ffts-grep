@@ -212,6 +212,7 @@ impl Cli {
     /// Returns `IndexerError::ConfigInvalid` if:
     /// - The `~` home directory expansion fails (home directory cannot be determined)
     /// - The current directory cannot be accessed when no explicit path is provided
+    #[must_use]
     pub fn project_dir(&self) -> Result<PathBuf> {
         match &self.project_dir {
             Some(path) => self.expand_tilde(path),
@@ -248,6 +249,7 @@ impl Cli {
     ///
     /// # Errors
     /// Returns `IndexerError::ConfigInvalid` if `project_dir()` fails.
+    #[must_use]
     pub fn db_path(&self) -> Result<PathBuf> {
         Ok(self.project_dir()?.join(DB_NAME))
     }
