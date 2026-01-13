@@ -638,7 +638,7 @@ $ ffts-grep doctor --verbose
 # JSON (for CI/CD)
 $ ffts-grep doctor --json
 {
-  "version": "0.11.0",
+  "version": "0.11.1",
   "project_dir": "/project",
   "checks": [...],
   "summary": { "pass": 10, "info": 0, "warn": 0, "fail": 0 },
