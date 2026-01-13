@@ -141,6 +141,12 @@ impl Indexer {
                                 }
                             }
                         }
+                        Err(e @ IndexerError::Database { .. }) => {
+                            if transaction_started {
+                                let _ = self.db.conn().execute("ROLLBACK", []);
+                            }
+                            return Err(e);
+                        }
                         Err(e) => {
                             // Log and continue - single file errors shouldn't fail the index
                             tracing::warn!(
@@ -632,6 +638,24 @@ mod tests {
         let stats = indexer.index_directory().unwrap();
         assert_eq!(stats.files_indexed, 0);
         assert_eq!(stats.files_skipped, 1);
+    }
+
+    #[test]
+    fn test_index_directory_fails_on_database_error() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join(DB_NAME);
+        let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+        db.init_schema().unwrap();
+
+        // Force database writes to fail.
+        db.conn().pragma_update(None, "query_only", "ON").unwrap();
+
+        std::fs::write(dir.path().join("test.rs"), "fn main() {}").unwrap();
+
+        let mut indexer = Indexer::new(dir.path(), db, IndexerConfig::default());
+        let result = indexer.index_directory();
+
+        assert!(matches!(result, Err(IndexerError::Database { .. })));
     }
 
     #[test]

@@ -1,67 +1,63 @@
-# Engineering Exec Spec: Repo Hardening, Toolchain, and CI
+# Engineering Exec Spec: Indexing Failure Semantics + Filename LIKE Escaping
 
 ## Problem statement and goals
-The repo is a cross‑platform CLI that mutates on‑disk state, but it lacked pinned tooling and continuous validation across OS/toolchain combinations. Earlier fixes hardened indexing and documentation; the remaining risk is verification drift (toolchain differences, untested platforms, and manual memory validation). The goal is to enforce reproducible tooling, add multi‑OS CI coverage, and automate expensive memory validation on a schedule, while keeping the MSRV stable and documentation accurate.
+Two correctness gaps surfaced during full-repo review: (1) indexing continued after database write failures, producing silent partial indexes, and (2) filename substring search used SQL LIKE without escaping `%` and `_`, letting wildcard semantics leak into literal searches. In addition, the crate-level doctest used the repo’s working directory and could collide with existing databases. The goal is to make database write errors fail fast with rollback, treat `%` and `_` literally in filename substring matching, harden the doctest to use an isolated temp directory, and update tutorial docs to match runtime behavior.
 
-## Non‑goals and constraints
-- Non‑goal: Change search semantics, schema design, or query ranking.
-- Non‑goal: Remove ignored memory tests (they are intentionally heavy).
-- Constraint: MSRV remains Rust 1.85 (Edition 2024).
-- Constraint: CI and toolchain updates must not reduce local developer ergonomics.
+## Non-goals and constraints
+- Non-goal: Change BM25 weighting, schema design, or search ranking strategy.
+- Non-goal: Introduce new dependencies for doctest isolation.
+- Constraint: Preserve current public APIs and MSRV policy.
 
 ## System overview (relevant modules/files)
-- `rust-toolchain.toml` (pinned toolchain for dev and CI)
-- `.github/workflows/ci.yml` (cross‑platform test + lint)
-- `.github/workflows/memory-validation.yml` (scheduled memory validation)
-- `.github/workflows/toolchain-bump.yml` (scheduled toolchain bump PR)
-- `README.md` (toolchain/CI policy + badge)
-- Rust crate: `rust-fts5-indexer/*`
+- `rust-fts5-indexer/src/indexer.rs` (indexing loop, transaction batching)
+- `rust-fts5-indexer/src/db.rs` (filename substring search)
+- `rust-fts5-indexer/src/lib.rs` (public doctest example)
+- `docs/learn/08-indexer_rs.md`, `docs/learn/09-search_rs.md` (tutorial alignment)
 
-## Comprehensive multi‑phase TODO checklist + acceptance criteria
+## Comprehensive multi-phase TODO checklist + acceptance criteria
 
-### Phase 1: Toolchain pinning
-1) **Pin the development toolchain**
-   - Add `rust-toolchain.toml` targeting Rust 1.92.0 with `rustfmt` + `clippy`.
-   - Acceptance: Local `cargo fmt`/`cargo clippy` are reproducible on any host.
+### Phase 1: Indexing failure semantics
+1) **Fail fast on database write errors**
+   - Treat `IndexerError::Database` as fatal during indexing.
+   - Roll back an active transaction before returning.
+   - Acceptance: DB write errors stop indexing and return an error (no silent partial index).
 
-### Phase 2: Cross‑platform CI
-2) **Multi‑OS test matrix**
-   - Run tests on Linux/macOS/Windows for both stable and MSRV (1.85.0).
-   - Acceptance: CI detects platform regressions and MSRV drift.
+2) **Regression test for DB error behavior**
+   - Force writes to fail via `PRAGMA query_only=ON` and verify error propagation.
+   - Acceptance: Unit test asserts `IndexerError::Database` on indexing.
 
-3) **Lint job**
-   - Run `cargo fmt -- --check` and `cargo clippy --all-targets -- -D warnings` on stable.
-   - Acceptance: Linting fails fast before merge.
+### Phase 2: Filename substring LIKE escaping
+3) **Escape LIKE wildcards**
+   - Escape `%`, `_`, and `\` in filename substring search.
+   - Use separate parameters for equality vs. LIKE patterns.
+   - Acceptance: Queries containing `%` or `_` match literally.
 
-### Phase 3: Scheduled validation
-4) **Memory validation schedule**
-   - Add a weekly job that runs `memory_validation` ignored tests on Linux/macOS.
-   - Acceptance: Memory regressions are visible without slowing normal CI.
+4) **Regression tests for literal matching**
+   - Add tests for `%` and `_` in filenames.
+   - Acceptance: Results exclude wildcard matches.
 
-5) **Automated toolchain bump PR**
-   - Add a monthly job that opens a PR with the latest stable Rust in `rust-toolchain.toml`.
-   - Acceptance: Toolchain stays current with minimal manual work.
+### Phase 3: Doctest isolation
+5) **Use temp directory in doctest**
+   - Create an isolated temp directory and clean up after the example.
+   - Acceptance: Doctest no longer depends on repo state.
 
 ### Phase 4: Documentation
-6) **CI badge and toolchain policy**
-   - Update README with CI + memory validation badges and toolchain/MSRV policy.
-   - Acceptance: Users can see CI health and expected Rust versions.
-
-7) **Contributing guidance**
-   - Add `CONTRIBUTING.md` with toolchain and verification requirements.
-   - Acceptance: Contributors have a single source of truth for local setup and checks.
+6) **Update tutorial docs**
+   - Align indexing error handling description.
+   - Update search tutorial to reflect two-phase flow and LIKE escaping.
+   - Acceptance: Docs match actual behavior and examples.
 
 ## Test plan
-- `cd rust-fts5-indexer && cargo fmt -- --check`
+- `cd rust-fts5-indexer && cargo fmt`
 - `cd rust-fts5-indexer && cargo test`
 - `cd rust-fts5-indexer && cargo clippy --all-targets -- -D warnings`
-- Scheduled: `cargo test --test memory_validation -- --ignored --nocapture`
+- Optional (scheduled): `cargo test --test memory_validation -- --ignored --nocapture`
 
 ## Risks and mitigations
-- **CI runtime increase**: mitigated by keeping lint separate and memory tests scheduled only.
-- **Toolchain drift**: mitigated by monthly PR automation.
-- **Platform‑specific failures**: mitigated by Windows/macOS/Linux coverage.
+- **Behavior change for `%`/`_` queries**: Now treated literally; mitigated by docs and tests.
+- **Fail-fast on DB errors**: Users now see errors instead of partial results; mitigated by explicit logging and deterministic exit.
+- **Doctest temp dir cleanup**: Failure to remove temp dir is benign; best-effort cleanup used.
 
 ## Rollout/rollback plan
-- Rollout: merge after CI green on the new matrix.
-- Rollback: revert workflow/toolchain commits; no data migrations required.
+- Rollout: merge once tests and clippy are green.
+- Rollback: revert indexing and LIKE-escaping commits if regressions appear; no data migrations required.

@@ -8,13 +8,23 @@
 //! ```rust
 //! use ffts_indexer::{Database, Indexer, IndexerConfig, PragmaConfig, DB_NAME};
 //! use std::path::Path;
+//! use std::time::{SystemTime, UNIX_EPOCH};
 //!
-//! let db = Database::open(Path::new(DB_NAME), &PragmaConfig::default())?;
+//! let unique = SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos();
+//! let root = std::env::temp_dir().join(format!("ffts-indexer-doctest-{unique}"));
+//! std::fs::create_dir_all(&root)?;
+//! std::fs::write(root.join("main.rs"), "fn main() {}")?;
+//!
+//! let db_path = root.join(DB_NAME);
+//! let db = Database::open(&db_path, &PragmaConfig::default())?;
 //! db.init_schema()?;
 //!
 //! let config = IndexerConfig::default();
-//! let mut indexer = Indexer::new(Path::new("."), db, config);
+//! let mut indexer = Indexer::new(Path::new(&root), db, config);
 //! indexer.index_directory()?;
+//!
+//! drop(indexer);
+//! let _ = std::fs::remove_dir_all(&root);
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 

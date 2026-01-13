@@ -82,15 +82,19 @@ The searcher holds:
 See `search.rs:67-109`:
 
 ```rust
-/// Sanitize query for FTS5 MATCH.
+/// Sanitize query for FTS5 MATCH with auto-prefix detection.
 ///
-/// Replaces FTS5 special characters with spaces to prevent
-/// syntax errors while still allowing fuzzy matching.
+/// Replaces FTS5 special characters with spaces to prevent syntax errors while
+/// still allowing fuzzy matching. If the query ends with `-` or `_`, we append
+/// `*` to enable FTS5 prefix matching (e.g., "01-" → "01*").
 ///
 /// # Performance
 /// Called for every search query. Marked `#[inline]` for hot-path optimization.
 #[inline]
 fn sanitize_query(query: &str) -> String {
+    let trimmed = query.trim();
+    let auto_prefix = trimmed.ends_with('-') || trimmed.ends_with('_');
+
     // FTS5 special characters that need escaping or removal:
     // * - wildcard (remove to search for literal)
     // " - phrase delimiter (remove)
@@ -101,9 +105,9 @@ fn sanitize_query(query: &str) -> String {
     // ~ - proximity (remove)
     // - - negation (replace with space)
 
-    let mut result = String::with_capacity(query.len());
+    let mut result = String::with_capacity(query.len() + 1);
 
-    for ch in query.chars() {
+    for ch in trimmed.chars() {
         match ch {
             '*' | '"' | '(' | ')' | ':' | '^' | '@' | '~' => {
                 // Remove special operators
@@ -124,8 +128,9 @@ fn sanitize_query(query: &str) -> String {
         }
     }
 
-    // Collapse multiple spaces and trim
-    result.split_whitespace().collect::<Vec<_>>().join(" ")
+    let sanitized = result.split_whitespace().collect::<Vec<_>>().join(" ");
+
+    if auto_prefix && !sanitized.is_empty() { format!("{sanitized}*") } else { sanitized }
 }
 ```
 
@@ -152,30 +157,70 @@ Without sanitization, `-test` would mean "NOT test", which is probably not what 
 
 ---
 
-## 9.5 Executing the Search
+## 9.5 Executing the Search (Two-Phase)
 
-See `search.rs:51-65`:
+See `search.rs:48-118`:
 
 ```rust
-/// Execute a search query.
+/// Execute a search query with two-phase search.
 ///
-/// # Errors
-/// Returns `IndexerError` if:
-/// - Database query execution fails
-/// - FTS5 MATCH syntax is invalid (after sanitization)
+/// Phase A: filename CONTAINS (SQL LIKE) for substring matches
+/// Phase B: FTS5 BM25 for remaining slots
 pub fn search(&mut self, query: &str) -> Result<Vec<SearchResult>> {
-    // Sanitize query first
     let sanitized = Self::sanitize_query(query);
 
-    // Handle empty queries
     if sanitized.trim().is_empty() {
         return Ok(vec![]);
     }
 
-    // Execute search
-    self.db.search(&sanitized, self.config.paths_only, self.config.max_results)
+    let max = self.config.max_results as usize;
+
+    // Phase A: filename CONTAINS (substring match)
+    let filename_query = sanitized.split_whitespace().next().unwrap_or(&sanitized);
+    let filename_matches =
+        self.db.search_filename_contains(filename_query, self.config.max_results)?;
+
+    let mut seen: HashSet<String> = HashSet::with_capacity(max);
+    let mut results: Vec<SearchResult> = Vec::with_capacity(max);
+
+    for path in filename_matches {
+        if results.len() >= max {
+            break;
+        }
+        seen.insert(path.clone());
+        results.push(SearchResult { path, rank: -1000.0 });
+    }
+
+    // Phase B: FTS5 BM25
+    if results.len() < max {
+        let fts_limit = (max - results.len() + seen.len()) as u32;
+        let fts_results = self.db.search(&sanitized, self.config.paths_only, fts_limit)?;
+
+        for result in fts_results {
+            if results.len() >= max {
+                break;
+            }
+            if !seen.contains(&result.path) {
+                seen.insert(result.path.clone());
+                results.push(result);
+            }
+        }
+    }
+
+    Ok(results)
 }
 ```
+
+### Why Two Phases?
+
+FTS5 matches whole tokens, so `"intro"` does not match `"introduction"`.
+By running a filename substring search first (SQL `LIKE`), we capture user expectations
+for file names, then fill the remaining slots with BM25-ranked FTS5 results.
+
+### Literal `%` and `_` in Filename Queries
+
+`search_filename_contains` escapes SQL `LIKE` wildcards (`%` and `_`) so these
+characters are treated literally in filename searches.
 
 ---
 
