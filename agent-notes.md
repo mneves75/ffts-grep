@@ -329,3 +329,6 @@
 ## 2026-01-12 21:21:24 -0300
 - Step: Bumped version to 0.10.0, updated changelogs/README/docs, and ran full test suite.
 - Commands executed: cargo test (rust-fts5-indexer) — all tests passed; memory_validation ignored as expected.
+## 2026-01-12 21:22:03 -0300
+- Step: Committed release 0.10.0, pushed to origin/main, and tagged v0.10.
+- Commands executed: git commit -m "Release 0.10.0", git push, git tag -a v0.10 -m "Release 0.10.0", git push --tags.
