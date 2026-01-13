@@ -50,6 +50,13 @@ Or use the deploy script for Claude Code integration:
 - **CI**: Tests run on Linux/macOS/Windows for both the latest stable and MSRV
 - **Scheduled**: Weekly memory validation (Linux/macOS) and monthly toolchain bump PRs
 
+## Assumptions & Limits
+
+- **Max file size**: 1MB default (via `IndexerConfig` in the library); the CLI uses this default to protect memory usage.
+- **Timestamp/storage bounds**: File mtimes and sizes are stored as `i64`. Files with mtimes beyond year 2262 or sizes > `i64::MAX` are skipped with a warning.
+- **Symlinks**: Not followed by default; use `--follow-symlinks` to opt in.
+- **Deletion pruning**: Removed files disappear from results on the next index run.
+
 ## Contributing
 
 See `CONTRIBUTING.md` for toolchain and verification requirements.

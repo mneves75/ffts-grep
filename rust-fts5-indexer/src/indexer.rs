@@ -273,23 +273,22 @@ impl Indexer {
         })?;
 
         // Cross-platform mtime using SystemTime (Windows compatible)
-        // Safety: u64→i64 cast is safe until year 2262 (i64::MAX seconds from UNIX_EPOCH)
-        #[allow(clippy::cast_possible_wrap)]
-        let mtime = metadata
+        let mtime_secs = metadata
             .modified()
             .map_err(|e| IndexerError::Io { source: e })?
             .duration_since(UNIX_EPOCH)
             .map_err(|e| IndexerError::Io {
                 source: std::io::Error::other(format!("Invalid mtime: {e}")),
             })?
-            .as_secs() as i64;
+            .as_secs();
+        let mtime = Self::checked_i64_from_u64(mtime_secs, "mtime")?;
 
-        // Safety: u64→i64 cast is safe for file sizes < 8 EiB (no production filesystem supports this)
-        #[allow(clippy::cast_possible_wrap)]
-        self.db.upsert_file(&rel_path.to_string_lossy(), &content, mtime, metadata.len() as i64)?;
+        let size = metadata.len();
+        let size_i64 = Self::checked_i64_from_u64(size, "file size")?;
+        self.db.upsert_file(&rel_path.to_string_lossy(), &content, mtime, size_i64)?;
 
         stats.files_indexed += 1;
-        stats.bytes_indexed += metadata.len();
+        stats.bytes_indexed += size;
 
         Ok(true)
     }
@@ -421,6 +420,15 @@ impl Indexer {
     /// Get the configuration.
     pub const fn config(&self) -> &IndexerConfig {
         &self.config
+    }
+
+    fn checked_i64_from_u64(value: u64, label: &'static str) -> Result<i64> {
+        if value > i64::MAX as u64 {
+            return Err(IndexerError::Io {
+                source: std::io::Error::other(format!("{label} out of range: {value}")),
+            });
+        }
+        Ok(value as i64)
     }
 }
 
@@ -789,6 +797,19 @@ mod tests {
 
         let content = indexer.read_file_content(&file_path, 2).unwrap();
         assert_eq!(content, "hi");
+    }
+
+    #[test]
+    fn test_checked_i64_from_u64_ok() {
+        let value = Indexer::checked_i64_from_u64(42, "value").unwrap();
+        assert_eq!(value, 42);
+    }
+
+    #[test]
+    fn test_checked_i64_from_u64_overflow() {
+        let err = Indexer::checked_i64_from_u64(u64::MAX, "value").unwrap_err();
+        let message = err.to_string();
+        assert!(message.contains("out of range"));
     }
 
     #[cfg(unix)]
