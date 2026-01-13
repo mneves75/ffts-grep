@@ -311,7 +311,7 @@ rust-fts5-indexer/
 
 ## Version Information
 
-This is **version 0.10** using **Rust Edition 2024** (requires Rust 1.85+).
+This is **version 0.11** using **Rust Edition 2024** (requires Rust 1.85+).
 
 The semantic versioning scheme:
 - **0.x.y** — Software is in initial development
@@ -338,4 +338,4 @@ Remember: the goal isn't just to read code—it's to understand it deeply enough
 
 ---
 
-*Tutorial created using the Feynman Technique for the Rust FTS5 File Indexer project. Version 0.10.*
+*Tutorial created using the Feynman Technique for the Rust FTS5 File Indexer project. Version 0.11.*

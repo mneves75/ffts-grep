@@ -3,7 +3,7 @@
 Fast full-text search file indexer for Claude Code using SQLite FTS5.
 
 **Binary name**: `ffts-grep`
-**Version**: 0.10
+**Version**: 0.11
 
 ## About
 
@@ -63,7 +63,7 @@ source ~/.zshrc
 
 ```bash
 ffts-grep --version
-# ffts-grep 0.10
+# ffts-grep 0.11
 ```
 
 ## Configure Claude Code
