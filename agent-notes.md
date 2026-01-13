@@ -344,3 +344,7 @@
 - Step: Reran formatter, full test suite, and clippy after version/doc/report updates.
 - Commands executed: cd rust-fts5-indexer && cargo fmt; cargo test; cargo clippy --all-targets -- -D warnings.
 - Outcome: All tests passed; clippy clean; memory_validation ignored as expected.
+## 2026-01-13 00:22:35 -0300
+- Step: Staged changes, committed release 0.10.0, pushed to origin/main, and force-updated tag v0.10 to the new commit.
+- Commands executed: git add -A; git commit -m "Release 0.10.0"; git push; git tag -f -a v0.10 -m "Release 0.10.0"; git push --force origin v0.10.
+- Outcome: origin/main and v0.10 tag now point at commit c872afc.
