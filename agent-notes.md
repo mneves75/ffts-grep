@@ -389,3 +389,7 @@
 - Step: Cleaned up unused imports after APPLICATION_ID_I32 adoption, reran fmt/tests/clippy.
 - Commands executed: cd rust-fts5-indexer && cargo fmt; cargo test; cargo clippy --all-targets -- -D warnings.
 - Outcome: All tests passed; clippy clean; memory_validation ignored as expected.
+## 2026-01-13 00:50:00 -0300
+- Step: Ran deployment script to build release binary, install to ~/.claude, update Claude settings, and index current project.
+- Commands executed: ./deploy_cc.sh.
+- Outcome: Build succeeded; settings updated; project indexed; version reported as 0.10.0.
