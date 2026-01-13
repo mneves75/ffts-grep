@@ -353,6 +353,6 @@
 - Commands executed: git commit -m "Update agent notes"; git push; git tag -f -a v0.10 -m "Release 0.10.0"; git push --force origin v0.10.
 - Outcome: origin/main and v0.10 tag now point at commit a45aa58.
 ## 2026-01-13 00:24:25 -0300
-- Step: Finalized agent-notes updates and prepared to commit/push and retag v0.10 to include them.
-- Commands executed: date.
-- Next: git add agent-notes.md; git commit; git push; git tag -f v0.10; git push --force origin v0.10.
+- Step: Committed final agent-notes update, pushed, and retagged v0.10 to include it.
+- Commands executed: git add agent-notes.md; git commit -m "Update agent notes (final)"; git push; git tag -f -a v0.10 -m "Release 0.10.0"; git push --force origin v0.10.
+- Outcome: origin/main and v0.10 tag now point at the latest commit.
