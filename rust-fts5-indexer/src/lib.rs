@@ -68,6 +68,7 @@ pub mod constants;
 pub mod db;
 pub mod doctor;
 pub mod error;
+mod fs_utils;
 pub mod health;
 pub mod indexer;
 pub mod init;
