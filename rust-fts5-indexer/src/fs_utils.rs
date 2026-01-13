@@ -38,7 +38,7 @@ pub(crate) fn sync_parent_dir(path: &Path) -> io::Result<()> {
                 std::ptr::null(),
                 OPEN_EXISTING,
                 FILE_FLAG_BACKUP_SEMANTICS,
-                0,
+                std::ptr::null_mut(),
             )
         };
 
