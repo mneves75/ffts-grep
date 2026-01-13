@@ -311,3 +311,6 @@
 - Step: Updated rust-fts5-indexer/PR_REPORT.md to reflect current fixes and verification commands.
 - Commands executed: date, rewrite PR_REPORT.md.
 - Next: stage, commit, push, and provide final report with citations.
+## 2026-01-12 21:14:27 -0300
+- Step: Staged changes, committed, and pushed to origin/main.
+- Commands executed: git add, git commit -m "Fix indexing DB error handling and LIKE escaping", git push.
