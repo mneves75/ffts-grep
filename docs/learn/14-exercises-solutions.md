@@ -17,17 +17,19 @@ This chapter provides solutions and explanations for all exercises from the prev
 ```
 rust-fts5-indexer/
 ├── src/
-│   ├── main.rs           # Entry point (737 lines)
-│   ├── lib.rs            # Library exports (64 lines)
-│   ├── cli.rs            # Argument parsing (628 lines)
-│   ├── db.rs             # Database layer (1008 lines)
-│   ├── indexer.rs        # Directory walking (607 lines)
-│   ├── search.rs         # Query execution (294 lines)
-│   ├── doctor.rs         # Diagnostics (845 lines)
-│   ├── init.rs           # Initialization (388 lines)
-│   └── health.rs         # Health checking (931 lines)
+│   ├── main.rs           # Entry point (657 lines)
+│   ├── lib.rs            # Library exports (76 lines)
+│   ├── cli.rs            # Argument parsing (653 lines)
+│   ├── db.rs             # Database layer (1430 lines)
+│   ├── indexer.rs        # Directory walking (919 lines)
+│   ├── search.rs         # Query execution (506 lines)
+│   ├── doctor.rs         # Diagnostics (842 lines)
+│   ├── init.rs           # Initialization (418 lines)
+│   ├── error.rs          # Error types (179 lines)
+│   ├── health.rs         # Health checking (972 lines)
+│   └── constants.rs      # Constants (16 lines)
 ├── tests/
-│   └── integration.rs    # Integration tests (1341 lines)
+│   └── integration.rs    # Integration tests
 ├── Cargo.toml            # Project manifest
 └── docs/
     └── learn/            # This tutorial
@@ -883,13 +885,17 @@ ffts-grep search --help
 
 | File | Purpose | Lines |
 |------|---------|-------|
-| `src/lib.rs` | Library exports | 64 |
-| `src/db.rs` | Database layer | 1008 |
-| `src/indexer.rs` | File walking | 607 |
-| `src/search.rs` | Query execution | 294 |
-| `src/doctor.rs` | Diagnostics | 845 |
-| `src/health.rs` | Health checking | 931 |
-| `tests/integration.rs` | Integration tests | 1341 |
+| `src/lib.rs` | Library exports | 76 |
+| `src/db.rs` | Database layer | 1430 |
+| `src/indexer.rs` | File walking | 919 |
+| `src/search.rs` | Query execution | 506 |
+| `src/doctor.rs` | Diagnostics | 842 |
+| `src/health.rs` | Health checking | 972 |
+| `src/main.rs` | Entry point | 657 |
+| `src/cli.rs` | CLI parsing | 653 |
+| `src/init.rs` | Initialization | 418 |
+| `src/error.rs` | Error types | 179 |
+| `src/constants.rs` | Constants | 16 |
 
 ---
 
