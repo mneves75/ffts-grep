@@ -1,6 +1,6 @@
 # ffts-grep
 
-[![Version](https://img.shields.io/badge/version-0.11-blue.svg)](https://github.com/mneves75/ffts-grep/releases)
+[![Version](https://img.shields.io/badge/version-0.11.1-blue.svg)](https://github.com/mneves75/ffts-grep/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 [![CI](https://github.com/mneves75/ffts-grep/actions/workflows/ci.yml/badge.svg)](https://github.com/mneves75/ffts-grep/actions/workflows/ci.yml)
 [![Memory Validation](https://github.com/mneves75/ffts-grep/actions/workflows/memory-validation.yml/badge.svg)](https://github.com/mneves75/ffts-grep/actions/workflows/memory-validation.yml)

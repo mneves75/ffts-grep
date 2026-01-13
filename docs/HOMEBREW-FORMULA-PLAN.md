@@ -42,7 +42,7 @@ homebrew-tap/
 ### Step 1: Calculate SHA256
 
 ```bash
-curl -sL https://github.com/mneves75/ffts-grep/archive/refs/tags/v0.11.tar.gz | shasum -a 256
+curl -sL https://github.com/mneves75/ffts-grep/archive/refs/tags/v0.11.1.tar.gz | shasum -a 256
 ```
 
 ### Step 2: Create Formula File
@@ -53,7 +53,7 @@ curl -sL https://github.com/mneves75/ffts-grep/archive/refs/tags/v0.11.tar.gz | 
 class FftsGrep < Formula
   desc "Fast full-text search file indexer using SQLite FTS5"
   homepage "https://github.com/mneves75/ffts-grep"
-  url "https://github.com/mneves75/ffts-grep/archive/refs/tags/v0.11.tar.gz"
+  url "https://github.com/mneves75/ffts-grep/archive/refs/tags/v0.11.1.tar.gz"
   sha256 "SHA256_HASH_HERE"
   license "Apache-2.0"
   head "https://github.com/mneves75/ffts-grep.git", branch: "master"
@@ -123,7 +123,7 @@ brew audit --strict --online ffts-grep
 
 ```bash
 git add Formula/ffts-grep.rb README.md
-git commit -m "Add ffts-grep formula v0.11"
+git commit -m "Add ffts-grep formula v0.11.1"
 git push
 ```
 
@@ -143,7 +143,7 @@ ffts-grep doctor
 1. `brew audit --strict ffts-grep` - passes linting
 2. `brew install ffts-grep` - builds successfully
 3. `brew test ffts-grep` - functional test passes (creates file, indexes, searches)
-4. `ffts-grep --version` - shows version 0.11
+4. `ffts-grep --version` - shows version 0.11.1
 5. `ffts-grep doctor` - runs diagnostics
 6. Both formulas coexist: `brew list --formula | grep -E 'healthsync|ffts-grep'`
 7. `brew livecheck ffts-grep` - version tracking works
@@ -175,7 +175,7 @@ ffts-grep doctor
 ┌─────────────────────────────────┐         ┌─────────────────────────────────┐
 │       ffts-grep repo            │         │      homebrew-tap repo          │
 │                                 │         │                                 │
-│  git tag v0.11                  │         │  Formula/ffts-grep.rb           │
+│  git tag v0.11.1                  │         │  Formula/ffts-grep.rb           │
 │         │                       │         │         ▲                       │
 │         ▼                       │         │         │                       │
 │  .github/workflows/             │         │  .github/workflows/             │
@@ -249,7 +249,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag (e.g., v0.11)'
+        description: 'Version tag (e.g., v0.11.1)'
         required: true
         type: string
 
@@ -317,7 +317,7 @@ jobs:
 
 ### How It Works
 
-1. **You tag a release**: `git tag v0.11 && git push --tags`
+1. **You tag a release**: `git tag v0.11.1 && git push --tags`
 2. **ffts-grep workflow runs**: Creates GitHub release, triggers tap update
 3. **homebrew-tap workflow runs**: Downloads tarball, calculates SHA256, regenerates formula, commits
 4. **Users get update**: `brew upgrade ffts-grep`
@@ -326,7 +326,7 @@ jobs:
 
 If automation fails, manually trigger from homebrew-tap:
 ```bash
-gh workflow run bump-formula.yml --repo mneves75/homebrew-tap -f version=v0.11
+gh workflow run bump-formula.yml --repo mneves75/homebrew-tap -f version=v0.11.1
 ```
 
 ---
@@ -335,14 +335,14 @@ gh workflow run bump-formula.yml --repo mneves75/homebrew-tap -f version=v0.11
 
 | # | Task | Repo |
 |---|------|------|
-| 1 | Calculate SHA256 for v0.11 | Local |
+| 1 | Calculate SHA256 for v0.11.1 | Local |
 | 2 | Create `Formula/ffts-grep.rb` | homebrew-tap |
 | 3 | Update tap README | homebrew-tap |
 | 4 | Audit and test formula | Local |
 | 5 | Create PAT and add secret | GitHub |
 | 6 | Add `release.yml` workflow | ffts-grep |
 | 7 | Add `bump-formula.yml` workflow | homebrew-tap |
-| 8 | Test automation with v0.11 release | Both |
+| 8 | Test automation with v0.11.1 release | Both |
 
 ---
 

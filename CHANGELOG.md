@@ -13,6 +13,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Nothing yet.
 
+## [0.11.1] - 2026-01-13
+
+### Added
+- **Durability**: Fsync helpers for files and parent directories to harden atomic reindex and recovery paths
+- **Windows coverage**: Directory fsync smoke test in CI
+
+### Fixed
+- **Windows fsync**: Use read/write handles for `sync_all` and correct Win32 handle usage to avoid access errors
+- **Atomic reindex**: Ensure directory fsyncs are durable across platforms; stabilize WAL cleanup tests on Windows
+- **Symlink containment**: Canonical root handling prevents symlink escape while allowing explicit symlink roots
+- **CI stability**: Performance tests account for CI timing variability without relaxing local budgets
+
 ## [0.11] - 2026-01-13
 
 ### Added
@@ -54,7 +66,8 @@ Initial public release. Fast full-text search file indexer using SQLite FTS5.
 - **Reliability**: Atomic reindex, race-safe temp files, WAL mode
 - **Quality**: 193 tests, clippy pedantic compliance, Rust Edition 2024
 
-[Unreleased]: https://github.com/mneves75/ffts-grep/compare/v0.11...HEAD
+[Unreleased]: https://github.com/mneves75/ffts-grep/compare/v0.11.1...HEAD
+[0.11.1]: https://github.com/mneves75/ffts-grep/releases/tag/v0.11.1
 [0.11]: https://github.com/mneves75/ffts-grep/releases/tag/v0.11
 [0.10]: https://github.com/mneves75/ffts-grep/releases/tag/v0.10
 [0.9]: https://github.com/mneves75/ffts-grep/releases/tag/v0.9
