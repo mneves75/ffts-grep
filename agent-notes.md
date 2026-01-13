@@ -323,3 +323,6 @@
 ## 2026-01-12 21:17:31 -0300
 - Step: Per user request to continue to 100%, fetched up-to-date Rust/Cargo best-practice citations for final report.
 - Commands executed: date.
+## 2026-01-12 21:18:20 -0300
+- Step: Ran web research to anchor 2025+ best-practice citations (Rust 1.92, 1.85/Edition 2024, Cargo manifest rust-version, resolver 3).
+- Commands executed: date; web.run search/open (see assistant message).
