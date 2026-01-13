@@ -22,14 +22,14 @@ enum ReleaseCommand {
         #[arg(long)]
         changelog: Option<PathBuf>,
 
-        /// Version to extract (e.g., 0.10). Defaults to latest non-Unreleased.
+        /// Version to extract (e.g., 0.11). Defaults to latest non-Unreleased.
         #[arg(long)]
         version: Option<String>,
     },
 
     /// Print a release checklist; optionally verify repository state.
     Checklist {
-        /// Version heading to verify in changelog (e.g., 0.10). Defaults to Cargo version (major.minor).
+        /// Version heading to verify in changelog (e.g., 0.11). Defaults to Cargo version (major.minor).
         #[arg(long)]
         version: Option<String>,
 
@@ -241,8 +241,8 @@ mod tests {
 
     #[test]
     fn test_versions_match() {
-        assert!(versions_match("0.10.0", "0.10"));
-        assert!(versions_match("0.10", "0.10"));
-        assert!(!versions_match("0.11.0", "0.10"));
+        assert!(versions_match("0.11.0", "0.11"));
+        assert!(versions_match("0.11", "0.11"));
+        assert!(!versions_match("0.12.0", "0.11"));
     }
 }

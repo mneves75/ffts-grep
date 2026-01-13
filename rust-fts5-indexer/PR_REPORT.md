@@ -13,7 +13,7 @@
 - Added `release-tools` binary + wrapper scripts for release checklist, version checks, and release notes from changelog.
 - Added CI job to enforce README version badge consistency.
 - Hardened metadata casts (mtime/size) with checked conversions and tests; clarified application_id storage.
-- Updated docs and changelogs to reflect new behavior, tooling, and version bump to 0.10.
+- Updated docs and changelogs to reflect new behavior, tooling, and version bump to 0.11.
 
 ---
 
@@ -48,10 +48,10 @@
 - `docs/learn/07-db_rs.md`: application_id snippet updated.
 - `README.md`: Assumptions & Limits section added.
 - `rust-fts5-indexer/SELF_CRITIQUE.md`: TODOs updated to reflect resolved items.
-- `CLAUDE.md`, `HOWTO.md`, `docs/learn/README.md`, `docs/state-machines/README.md`: version 0.10 updates and deletion-pruning notes.
+- `CLAUDE.md`, `HOWTO.md`, `docs/learn/README.md`, `docs/state-machines/README.md`: version 0.11 updates and deletion-pruning notes.
 
 ### Changelog
-- `CHANGELOG.md` and `rust-fts5-indexer/CHANGELOG.md`: 0.10 entries updated for pruning + tooling.
+- `CHANGELOG.md` and `rust-fts5-indexer/CHANGELOG.md`: 0.11 entries updated for pruning + tooling.
 
 ---
 

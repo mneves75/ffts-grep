@@ -13,6 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Nothing yet.
 
+## [0.11] - 2026-01-13
+
+### Added
+- **Release tooling**: Automated checklist, version consistency check, and release-note extraction scripts
+- **CI guardrail**: Version badge consistency job for README vs Cargo.toml
+- **Safety guards**: Checked conversions for file mtime/size to avoid overflow
+- **Constants**: Centralized application_id constants to avoid casting surprises
+
+### Fixed
+- **Deletion detection**: Incremental indexing now prunes entries for files removed from disk
+
 ## [0.10] - 2026-01-13
 
 ### Added
@@ -25,17 +36,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - "test_" becomes "test*" (matches "test_utils", "test_config")
 - **Filename ordering**: Results ordered by exact match > prefix match > contains match > shorter filename
 - **Tests**: Added coverage for two-phase search, auto-prefix behavior, DB error handling, and literal `%`/`_` filename queries
-- **Release tooling**: Automated checklist, version consistency check, and release-note extraction scripts
-- **CI guardrail**: Version badge consistency job for README vs Cargo.toml
-- **Safety guards**: Checked conversions for file mtime/size to avoid overflow
-- **Constants**: Centralized application_id constants to avoid casting surprises
 
 ### Fixed
-
 - **Indexing correctness**: Database write errors now fail fast with rollback (no silent partial indexes)
 - **Filename searches**: Escaped SQL LIKE wildcards so `%` and `_` are treated literally
 - **Doctest isolation**: Examples run in a temporary directory to avoid repo-state collisions
-- **Deletion detection**: Incremental indexing now prunes entries for files removed from disk
 
 ## [0.9] - 2026-01-11
 
@@ -49,6 +54,7 @@ Initial public release. Fast full-text search file indexer using SQLite FTS5.
 - **Reliability**: Atomic reindex, race-safe temp files, WAL mode
 - **Quality**: 193 tests, clippy pedantic compliance, Rust Edition 2024
 
-[Unreleased]: https://github.com/mneves75/ffts-grep/compare/v0.10...HEAD
+[Unreleased]: https://github.com/mneves75/ffts-grep/compare/v0.11...HEAD
+[0.11]: https://github.com/mneves75/ffts-grep/releases/tag/v0.11
 [0.10]: https://github.com/mneves75/ffts-grep/releases/tag/v0.10
 [0.9]: https://github.com/mneves75/ffts-grep/releases/tag/v0.9

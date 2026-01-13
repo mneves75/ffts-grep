@@ -396,3 +396,7 @@
 ## 2026-01-13 00:50:58 -0300
 - Step: deploy_cc.sh added .ffts-index.db.tmp* to root .gitignore; preparing to commit and retag release.
 - Commands executed: git diff -- .gitignore.
+## 2026-01-13 00:56:59 -0300
+- Step: Bumped version to 0.11.0 across Cargo/README/docs, updated changelogs, and refreshed release tooling examples/tests; ran fmt/tests/clippy.
+- Commands executed: cd rust-fts5-indexer && cargo fmt; cargo test; cargo clippy --all-targets -- -D warnings.
+- Outcome: All tests passed; clippy clean; memory_validation ignored as expected.

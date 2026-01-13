@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Fast full-text search file indexer using SQLite FTS5. Provides ~10ms queries on 10K file codebases. Uses BM25 ranking for relevant search results.
 
-**Version**: 0.10 | **Rust**: 1.85+ (see `rust-fts5-indexer/Cargo.toml`)
+**Version**: 0.11 | **Rust**: 1.85+ (see `rust-fts5-indexer/Cargo.toml`)
 
 ## Build Commands
 
@@ -83,7 +83,7 @@ rust-fts5-indexer/src/
 - **`files_fts`** virtual table: FTS5 index on `filename`, `path`, `content` with BM25 weights (100:50:1)
 - **Triggers**: `files_ai` (INSERT), `files_au` (UPDATE), `files_ad` (DELETE) auto-sync FTS5
 - **Location**: `.ffts-index.db` in project root (WAL mode enabled)
-- **Migration**: Automatic schema upgrade from v0.9 to v0.10 via `migrate_schema()`
+- **Migration**: Automatic schema upgrade from v0.9 to v0.11 via `migrate_schema()`
 
 ## Key Patterns
 

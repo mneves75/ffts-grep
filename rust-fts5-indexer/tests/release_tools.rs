@@ -25,11 +25,11 @@ fn test_release_notes_for_version() {
         "--changelog",
         changelog.to_string_lossy().as_ref(),
         "--version",
-        "0.10",
+        "0.11",
     ])
     .assert()
     .success()
-    .stdout(contains("## [0.10]"));
+    .stdout(contains("## [0.11]"));
 }
 
 #[test]

@@ -54,8 +54,8 @@ Release helpers live in `scripts/` and the `release-tools` binary:
 ./scripts/check-version-consistency.sh
 
 # Generate release notes from CHANGELOG.md
-./scripts/release-notes.sh --version 0.10
+./scripts/release-notes.sh --version 0.11
 
 # Run checklist with verification (clean git, version match, changelog entry)
-./scripts/release-checklist.sh --version 0.10
+./scripts/release-checklist.sh --version 0.11
 ```
