@@ -393,3 +393,6 @@
 - Step: Ran deployment script to build release binary, install to ~/.claude, update Claude settings, and index current project.
 - Commands executed: ./deploy_cc.sh.
 - Outcome: Build succeeded; settings updated; project indexed; version reported as 0.10.0.
+## 2026-01-13 00:50:58 -0300
+- Step: deploy_cc.sh added .ffts-index.db.tmp* to root .gitignore; preparing to commit and retag release.
+- Commands executed: git diff -- .gitignore.
