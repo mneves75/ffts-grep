@@ -518,6 +518,7 @@ pub fn backup_and_reinit_with_config(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::APPLICATION_ID_I32;
     use tempfile::tempdir;
 
     // === find_project_root tests ===
@@ -712,7 +713,7 @@ mod tests {
 
         // Create database with correct app ID but missing schema
         let conn = rusqlite::Connection::open(&db_path).unwrap();
-        conn.pragma_update(None, "application_id", EXPECTED_APPLICATION_ID as i32).unwrap();
+        conn.pragma_update(None, "application_id", APPLICATION_ID_I32).unwrap();
         // Create only files table, missing FTS, triggers, indexes
         conn.execute("CREATE TABLE files (path TEXT PRIMARY KEY, content TEXT)", []).unwrap();
         drop(conn);
