@@ -400,3 +400,7 @@
 - Step: Bumped version to 0.11.0 across Cargo/README/docs, updated changelogs, and refreshed release tooling examples/tests; ran fmt/tests/clippy.
 - Commands executed: cd rust-fts5-indexer && cargo fmt; cargo test; cargo clippy --all-targets -- -D warnings.
 - Outcome: All tests passed; clippy clean; memory_validation ignored as expected.
+## 2026-01-13 00:57:45 -0300
+- Step: Committed version bump to 0.11.0, pushed to origin/main, and tagged v0.11.
+- Commands executed: git commit -m "Release 0.11.0"; git push; git tag -a v0.11 -m "Release 0.11.0"; git push --tags.
+- Outcome: origin/main updated and v0.11 tag published.
