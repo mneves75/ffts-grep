@@ -459,25 +459,29 @@ impl Database {
             return Ok(vec![]);
         }
 
+        let like_term = escape_like_pattern(search_term);
+
         // CONTAINS match with intelligent ordering:
         // - CASE 0: exact filename match
         // - CASE 1: filename starts with query (prefix)
         // - CASE 2: filename contains query anywhere
         // Secondary sort by filename length (shorter = more specific match)
         let sql = "SELECT path FROM files
-                   WHERE filename LIKE '%' || ?1 || '%' COLLATE NOCASE
+                   WHERE filename LIKE '%' || ?1 || '%' ESCAPE '\\' COLLATE NOCASE
                    ORDER BY
-                       CASE WHEN LOWER(filename) = LOWER(?1) THEN 0
-                            WHEN LOWER(filename) LIKE LOWER(?1) || '%' THEN 1
+                       CASE WHEN LOWER(filename) = LOWER(?2) THEN 0
+                            WHEN LOWER(filename) LIKE LOWER(?1) || '%' ESCAPE '\\' THEN 1
                             ELSE 2 END,
                        length(filename)
-                   LIMIT ?2";
+                   LIMIT ?3";
 
         let mut stmt =
             self.conn.prepare_cached(sql).map_err(|e| IndexerError::Database { source: e })?;
 
         let paths: Vec<String> = stmt
-            .query_map(rusqlite::params![search_term, limit], |row| row.get::<_, String>(0))
+            .query_map(rusqlite::params![like_term, search_term, limit], |row| {
+                row.get::<_, String>(0)
+            })
             .map_err(|e| IndexerError::Database { source: e })?
             .filter_map(std::result::Result::ok)
             .collect();
@@ -668,6 +672,20 @@ impl Database {
         #[allow(clippy::cast_sign_loss)]
         Some((page_count * page_size) as u64)
     }
+}
+
+/// Escape LIKE wildcard characters in user input.
+fn escape_like_pattern(input: &str) -> String {
+    let mut escaped = String::with_capacity(input.len());
+    for ch in input.chars() {
+        match ch {
+            '\\' => escaped.push_str("\\\\"),
+            '%' => escaped.push_str("\\%"),
+            '_' => escaped.push_str("\\_"),
+            _ => escaped.push(ch),
+        }
+    }
+    escaped
 }
 
 /// Result of schema completeness check.
@@ -1310,6 +1328,28 @@ mod tests {
         assert_eq!(results.len(), 2);
         // Shorter filename should come first (more specific match)
         assert_eq!(results[0], "intro.md");
+    }
+
+    #[test]
+    fn test_search_filename_contains_percent_literal() {
+        let (_dir, db) = create_test_db();
+
+        db.upsert_file("100%coverage.md", "a", 0, 1).unwrap();
+        db.upsert_file("100.md", "b", 0, 1).unwrap();
+
+        let results = db.search_filename_contains("100%", 10).unwrap();
+        assert_eq!(results, vec!["100%coverage.md".to_string()]);
+    }
+
+    #[test]
+    fn test_search_filename_contains_underscore_literal() {
+        let (_dir, db) = create_test_db();
+
+        db.upsert_file("foo_bar.md", "a", 0, 1).unwrap();
+        db.upsert_file("fooXbar.md", "b", 0, 1).unwrap();
+
+        let results = db.search_filename_contains("foo_bar", 10).unwrap();
+        assert_eq!(results, vec!["foo_bar.md".to_string()]);
     }
 
     #[test]

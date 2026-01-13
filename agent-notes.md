@@ -289,3 +289,25 @@
 
 [2026-01-12 20:55:05 -0300] Committed and pushed agent-notes.md.
 - Commands: git add agent-notes.md; git commit -m "chore: update agent notes"; git push.
+
+[2026-01-12 20:56:58 -0300] Repo-wide review requested post-merge; scanned for panics/TODOs and verified codebase state.
+- Commands: git status -sb; rg TODO/FIXME/panic/unreachable in rust-fts5-indexer/src; web.run for Rust/CI best-practice citations.
+- Findings: panics only in tests; no production blockers identified.
+## 2026-01-12 21:07:44 -0300
+- Step: Full repo review; identified correctness gaps in indexing (DB errors treated as non-fatal) and filename substring search (LIKE wildcard leakage).
+- Changes planned: Make DB write errors fail-fast with rollback; escape LIKE wildcards in filename search; add regression tests; refresh tutorial docs for new behavior.
+- Commands executed: ls, git status -sb, rg --files, multiple sed/rg reads.
+- Open questions: None; proceed with minimal fixes + tests.
+## 2026-01-12 21:09:32 -0300
+- Step: Implemented fixes (fatal DB errors in indexer + LIKE wildcard escaping in filename search) and updated docs/tutorial snippets; repaired doctest to avoid using repo DB.
+- What changed:
+  - rust-fts5-indexer/src/indexer.rs: fail-fast on IndexerError::Database with rollback; new regression test.
+  - rust-fts5-indexer/src/db.rs: escape LIKE wildcards for filename search; new tests for % and _ literals.
+  - rust-fts5-indexer/src/lib.rs: doctest uses temp dir and cleanup.
+  - docs/learn/08-indexer_rs.md and docs/learn/09-search_rs.md: updated to match behavior.
+- Commands executed: cargo fmt; cargo test (initial fail due to doctest; fixed); cargo test (pass); cargo clippy --all-targets -- -D warnings.
+- Outcome: All tests + doctests passing; clippy clean.
+## 2026-01-12 21:13:59 -0300
+- Step: Updated rust-fts5-indexer/PR_REPORT.md to reflect current fixes and verification commands.
+- Commands executed: date, rewrite PR_REPORT.md.
+- Next: stage, commit, push, and provide final report with citations.

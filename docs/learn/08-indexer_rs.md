@@ -138,8 +138,15 @@ pub fn index_directory(&mut self) -> Result<IndexStats> {
                             }
                         }
                     }
+                    Err(e @ IndexerError::Database { .. }) => {
+                        // Database errors are fatal: avoid silent partial indexes.
+                        if transaction_started {
+                            let _ = self.db.conn().execute("ROLLBACK", []);
+                        }
+                        return Err(e);
+                    }
                     Err(e) => {
-                        // Log and continue - single file errors shouldn't fail the index
+                        // File-level errors are non-fatal; log and continue.
                         tracing::warn!(path = %entry.path().display(), error = %e, "Failed to index file");
                         stats.files_skipped += 1;
                     }
@@ -174,7 +181,8 @@ pub fn index_directory(&mut self) -> Result<IndexStats> {
 | 2 | 50-499 | Single transaction, commit at 500 |
 | 3 | 500+ | Commit every 500 files |
 
-This reduces disk I/O significantly for large codebases.
+This reduces disk I/O significantly for large codebases while still failing fast
+on database write errors to avoid silently incomplete indexes.
 
 ---
 
