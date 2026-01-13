@@ -365,3 +365,7 @@
 - Tests: Added conversion overflow unit tests in indexer; existing tests cover application_id and large file handling.
 - Commands executed: cd rust-fts5-indexer && cargo fmt; cargo test; cargo clippy --all-targets -- -D warnings.
 - Outcome: All tests passed; clippy clean; memory_validation ignored as expected.
+## 2026-01-13 00:35:56 -0300
+- Step: Committed bounds checks + docs updates, pushed to origin/main, and retagged v0.10 to point at the new release commit.
+- Commands executed: git commit -m "Harden indexer bounds and docs"; git push; git tag -f -a v0.10 -m "Release 0.10.0"; git push --force origin v0.10.
+- Outcome: origin/main and v0.10 tag now point at commit f3aa966.
