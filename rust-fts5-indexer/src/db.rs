@@ -509,6 +509,46 @@ impl Database {
         Ok(paths)
     }
 
+    /// Remove database entries for files that no longer exist on disk.
+    ///
+    /// Returns the number of pruned rows.
+    ///
+    /// # Errors
+    /// Returns `IndexerError::Database` if any query or deletion fails.
+    pub fn prune_missing_files(&mut self, root: &Path) -> Result<usize> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT path FROM files")
+            .map_err(|e| IndexerError::Database { source: e })?;
+
+        let rows = stmt
+            .query_map([], |row| row.get::<_, String>(0))
+            .map_err(|e| IndexerError::Database { source: e })?;
+
+        let mut missing = Vec::new();
+        for row in rows {
+            let rel_path = row.map_err(|e| IndexerError::Database { source: e })?;
+            if !root.join(&rel_path).exists() {
+                missing.push(rel_path);
+            }
+        }
+
+        if missing.is_empty() {
+            return Ok(0);
+        }
+
+        drop(stmt);
+
+        let tx = self.conn.transaction().map_err(|e| IndexerError::Database { source: e })?;
+        for rel_path in &missing {
+            tx.execute("DELETE FROM files WHERE path = ?", [rel_path])
+                .map_err(|e| IndexerError::Database { source: e })?;
+        }
+        tx.commit().map_err(|e| IndexerError::Database { source: e })?;
+
+        Ok(missing.len())
+    }
+
     /// Get total number of indexed files.
     ///
     /// # Errors

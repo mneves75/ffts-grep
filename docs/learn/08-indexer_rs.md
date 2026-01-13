@@ -23,7 +23,7 @@ The bouncer decides what gets into the club (indexed) and what stays out (skippe
 
 ## 8.2 IndexerConfig: Configuration
 
-See `indexer.rs:14-33`:
+Here is the actual IndexerConfig implementation from `indexer.rs:14-33`:
 
 ```rust
 /// Configuration for the indexer.
@@ -31,10 +31,8 @@ See `indexer.rs:14-33`:
 pub struct IndexerConfig {
     /// Maximum file size to index (in bytes)
     pub max_file_size: u64,
-
     /// Files per transaction batch
     pub batch_size: usize,
-
     /// Follow symlinks (disabled by default)
     pub follow_symlinks: bool,
 }
@@ -42,7 +40,7 @@ pub struct IndexerConfig {
 impl Default for IndexerConfig {
     fn default() -> Self {
         Self {
-            max_file_size: 1024 * 1024, // 1MB default
+            max_file_size: 1024 * 1024, // 1MB
             batch_size: 500,
             follow_symlinks: false,
         }
@@ -60,7 +58,7 @@ impl Default for IndexerConfig {
 
 ## 8.3 The Indexer Struct
 
-See `indexer.rs:73-86`:
+Here is the actual Indexer implementation from `indexer.rs:73-86`:
 
 ```rust
 /// FTS5 file indexer.
@@ -75,11 +73,7 @@ pub struct Indexer {
 impl Indexer {
     /// Create a new indexer for the given project root.
     pub fn new(root: &Path, db: Database, config: IndexerConfig) -> Self {
-        Self {
-            db,
-            root: root.to_path_buf(),
-            config,
-        }
+        Self { db, root: root.to_path_buf(), config }
     }
 }
 ```
@@ -89,35 +83,129 @@ The indexer holds:
 - The root path (where to start walking)
 - Configuration (how to index)
 
+### IndexStats Struct
+
+```rust
+/// Statistics from an indexing operation.
+#[derive(Debug, Default)]
+pub struct IndexStats {
+    pub files_indexed: u64,
+    pub files_skipped: u64,
+    pub bytes_indexed: u64,
+    pub duration: Duration,
+}
+```
+
 ---
 
 ## 8.4 The Main Indexing Loop
 
-See `indexer.rs:95-182`:
+Here is the actual index_directory implementation from `indexer.rs:88-189`:
 
 ```rust
 /// Index all files in the project directory (incremental).
+///
+/// # Errors
+/// Returns `IndexerError` if:
+/// - Database operations fail (see [`Database::upsert_file`](crate::Database::upsert_file))
+/// - File I/O operations fail (reading file content)
+/// - Gitignore parsing fails
 pub fn index_directory(&mut self) -> Result<IndexStats> {
-    // Transaction threshold: start transaction after 50 files
+    // Conditional transaction strategy (2025+ best practice)
     const TRANSACTION_THRESHOLD: usize = 50;
 
     let start = SystemTime::now();
 
-    // Create gitignore-aware directory walker
+    // Use ignore crate for gitignore-aware walking
     let walk = WalkBuilder::new(&self.root)
-        .standard_filters(true)  // Respect .gitignore
-        .same_file_system(true)  // Don't cross filesystems
-        .follow_links(self.config.follow_symlinks) // Opt-in symlink traversal
+        .standard_filters(true) // Respect .gitignore
+        .same_file_system(true) // Prevent crossing filesystems
+        .follow_links(self.config.follow_symlinks)
         .build();
 
     let mut stats = IndexStats::default();
     let mut batch_count = 0;
     let mut transaction_started = false;
 
-    // Walk through all entries
     for result in walk {
         match result {
             Ok(entry) => {
+                // Process with batch tracking
+                match self.process_entry(&entry, &mut stats) {
+                    Ok(needs_commit) => {
+                        if needs_commit {
+                            batch_count += 1;
+
+                            // Start transaction after hitting threshold
+                            if batch_count == TRANSACTION_THRESHOLD && !transaction_started {
+                                self.db
+                                    .conn()
+                                    .execute("BEGIN IMMEDIATE", [])
+                                    .map_err(|e| IndexerError::Database { source: e })?;
+                                transaction_started = true;
+                            }
+
+                            // Batched commits for large operations
+                            if transaction_started && batch_count >= self.config.batch_size {
+                                self.db
+                                    .conn()
+                                    .execute("COMMIT", [])
+                                    .map_err(|e| IndexerError::Database { source: e })?;
+                                self.db
+                                    .conn()
+                                    .execute("BEGIN IMMEDIATE", [])
+                                    .map_err(|e| IndexerError::Database { source: e })?;
+                                batch_count = TRANSACTION_THRESHOLD; // Reset to threshold, not 0
+                            }
+                        }
+                    }
+                    Err(e @ IndexerError::Database { .. }) => {
+                        if transaction_started {
+                            let _ = self.db.conn().execute("ROLLBACK", []);
+                        }
+                        return Err(e);
+                    }
+                    Err(e) => {
+                        // Log and continue - single file errors shouldn't fail the index
+                        tracing::warn!(
+                            path = %entry.path().display(),
+                            error = %e,
+                            "Failed to index file"
+                        );
+                        stats.files_skipped += 1;
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::warn!(
+                    error = %e,
+                    "Directory walk error"
+                );
+            }
+        }
+    }
+
+    // Commit final batch if transaction was started
+    if transaction_started {
+        self.db
+            .conn()
+            .execute("COMMIT", [])
+            .map_err(|e| IndexerError::Database { source: e })?;
+    }
+
+    // SQLite-GUIDELINES.md: Run ANALYZE after bulk changes for query optimization
+    self.db.conn().execute("ANALYZE", []).ok();
+
+    // 2025+ best practice: PRAGMA optimize updates query planner statistics
+    self.db.optimize().ok();
+
+    // 2025+ best practice: FTS5 OPTIMIZE defragments index after >10% row changes
+    self.db.optimize_fts().ok();
+
+    stats.duration = start.elapsed().unwrap_or_default();
+    Ok(stats)
+}
+```
                 // Process file or skip
                 match self.process_entry(&entry, &mut stats) {
                     Ok(needs_commit) => {
@@ -163,6 +251,12 @@ pub fn index_directory(&mut self) -> Result<IndexStats> {
         self.db.conn().execute("COMMIT", [])?;
     }
 
+    // Prune missing files after incremental indexing
+    let pruned = self.db.prune_missing_files(&self.root)?;
+    if pruned > 0 {
+        tracing::info!(pruned, "Pruned missing files");
+    }
+
     // Run optimizations after bulk changes
     self.db.conn().execute("ANALYZE", [])?;
     self.db.optimize()?;
@@ -182,7 +276,8 @@ pub fn index_directory(&mut self) -> Result<IndexStats> {
 | 3 | 500+ | Commit every 500 files |
 
 This reduces disk I/O significantly for large codebases while still failing fast
-on database write errors to avoid silently incomplete indexes.
+on database write errors to avoid silently incomplete indexes. After indexing,
+the indexer prunes entries for files that no longer exist on disk.
 
 ---
 

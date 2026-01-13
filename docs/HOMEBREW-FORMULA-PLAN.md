@@ -42,7 +42,7 @@ homebrew-tap/
 ### Step 1: Calculate SHA256
 
 ```bash
-curl -sL https://github.com/mneves75/ffts-grep/archive/refs/tags/v0.9.tar.gz | shasum -a 256
+curl -sL https://github.com/mneves75/ffts-grep/archive/refs/tags/v0.10.tar.gz | shasum -a 256
 ```
 
 ### Step 2: Create Formula File
@@ -53,7 +53,7 @@ curl -sL https://github.com/mneves75/ffts-grep/archive/refs/tags/v0.9.tar.gz | s
 class FftsGrep < Formula
   desc "Fast full-text search file indexer using SQLite FTS5"
   homepage "https://github.com/mneves75/ffts-grep"
-  url "https://github.com/mneves75/ffts-grep/archive/refs/tags/v0.9.tar.gz"
+  url "https://github.com/mneves75/ffts-grep/archive/refs/tags/v0.10.tar.gz"
   sha256 "SHA256_HASH_HERE"
   license "Apache-2.0"
   head "https://github.com/mneves75/ffts-grep.git", branch: "master"
@@ -123,7 +123,7 @@ brew audit --strict --online ffts-grep
 
 ```bash
 git add Formula/ffts-grep.rb README.md
-git commit -m "Add ffts-grep formula v0.9"
+git commit -m "Add ffts-grep formula v0.10"
 git push
 ```
 
@@ -143,7 +143,7 @@ ffts-grep doctor
 1. `brew audit --strict ffts-grep` - passes linting
 2. `brew install ffts-grep` - builds successfully
 3. `brew test ffts-grep` - functional test passes (creates file, indexes, searches)
-4. `ffts-grep --version` - shows version 0.9
+4. `ffts-grep --version` - shows version 0.10
 5. `ffts-grep doctor` - runs diagnostics
 6. Both formulas coexist: `brew list --formula | grep -E 'healthsync|ffts-grep'`
 7. `brew livecheck ffts-grep` - version tracking works
@@ -335,7 +335,7 @@ gh workflow run bump-formula.yml --repo mneves75/homebrew-tap -f version=v0.10
 
 | # | Task | Repo |
 |---|------|------|
-| 1 | Calculate SHA256 for v0.9 | Local |
+| 1 | Calculate SHA256 for v0.10 | Local |
 | 2 | Create `Formula/ffts-grep.rb` | homebrew-tap |
 | 3 | Update tap README | homebrew-tap |
 | 4 | Audit and test formula | Local |
