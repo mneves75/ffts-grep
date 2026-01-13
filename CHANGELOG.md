@@ -5,10 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Nothing yet.
+
+### Fixed
+- Nothing yet.
+
 ## [0.10] - 2026-01-13
 
 ### Added
-
 - **Two-phase search**: Filename substring matching now works correctly
   - Phase A: SQL LIKE '%query%' for filename CONTAINS matches (bypasses FTS5 tokenization)
   - Phase B: FTS5 BM25 for content/path matches
@@ -18,12 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - "test_" becomes "test*" (matches "test_utils", "test_config")
 - **Filename ordering**: Results ordered by exact match > prefix match > contains match > shorter filename
 - **Tests**: Added coverage for two-phase search, auto-prefix behavior, DB error handling, and literal `%`/`_` filename queries
+- **Release tooling**: Automated checklist, version consistency check, and release-note extraction scripts
+- **CI guardrail**: Version badge consistency job for README vs Cargo.toml
 
 ### Fixed
 
 - **Indexing correctness**: Database write errors now fail fast with rollback (no silent partial indexes)
 - **Filename searches**: Escaped SQL LIKE wildcards so `%` and `_` are treated literally
 - **Doctest isolation**: Examples run in a temporary directory to avoid repo-state collisions
+- **Deletion detection**: Incremental indexing now prunes entries for files removed from disk
 
 ## [0.9] - 2026-01-11
 
@@ -37,5 +47,6 @@ Initial public release. Fast full-text search file indexer using SQLite FTS5.
 - **Reliability**: Atomic reindex, race-safe temp files, WAL mode
 - **Quality**: 193 tests, clippy pedantic compliance, Rust Edition 2024
 
+[Unreleased]: https://github.com/mneves75/ffts-grep/compare/v0.10...HEAD
 [0.10]: https://github.com/mneves75/ffts-grep/releases/tag/v0.10
 [0.9]: https://github.com/mneves75/ffts-grep/releases/tag/v0.9

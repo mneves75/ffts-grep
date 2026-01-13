@@ -13,6 +13,10 @@ categories = ["command-line-utilities", "database"]
 name = "ffts-grep"
 path = "src/main.rs"
 
+[[bin]]
+name = "release-tools"
+path = "src/bin/release_tools.rs"
+
 [dependencies]
 # SQLite - bundled with FTS5 enabled for guaranteed availability
 rusqlite = { version = "0.38", features = ["bundled"] }

@@ -21,61 +21,65 @@ The customer doesn't need to know how the chef cooks—they just need to know wh
 
 ---
 
-## 3.2 The Code: Line by Line
+## 3.2 The Actual Source Code
 
-Let's examine the actual code at `lib.rs:1-64`:
+Here is the complete actual source code from `lib.rs`:
 
 ```rust
-//! ffts-grep: Fast FTS5 file indexer with sub-10ms queries.
+//! ffts-indexer - Fast full-text search file indexer using `SQLite` FTS5
+//!
+//! This library provides the core functionality for indexing files
+//! in a directory and searching them using `SQLite` FTS5.
 //!
 //! # Example
 //!
-//! ```rust,no_run
+//! ```rust
 //! use ffts_indexer::{Database, Indexer, IndexerConfig, PragmaConfig, DB_NAME};
+//! use std::path::Path;
+//! use std::time::{SystemTime, UNIX_EPOCH};
 //!
-//! let db = Database::open(Path::new(DB_NAME), &PragmaConfig::default())?;
+//! let unique = SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos();
+//! let root = std::env::temp_dir().join(format!("ffts-indexer-doctest-{unique}"));
+//! std::fs::create_dir_all(&root)?;
+//! std::fs::write(root.join("main.rs"), "fn main() {}")?;
+//!
+//! let db_path = root.join(DB_NAME);
+//! let db = Database::open(&db_path, &PragmaConfig::default())?;
 //! db.init_schema()?;
 //!
-//! let mut indexer = Indexer::new(Path::new("."), db, IndexerConfig::default());
+//! let config = IndexerConfig::default();
+//! let mut indexer = Indexer::new(Path::new(&root), db, config);
 //! indexer.index_directory()?;
+//!
+//! drop(indexer);
+//! let _ = std::fs::remove_dir_all(&root);
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
-//!
-//! <small>Note: This library requires Rust 1.85+ (Edition 2024).</small>
-```
 
-**Lines 1-17**: The module documentation (doc comment). This appears on crates.io and in `cargo doc`. It tells users:
-- What the library does
-- How to use it (example code)
-- Requirements (Rust 1.85+)
-
-### Module Exports
-
-```rust
-// Database constants (lib.rs:22-40)
+/// Default database filename.
 pub const DB_NAME: &str = ".ffts-index.db";
+
+/// WAL mode shm file suffix.
+pub const DB_SHM_SUFFIX: &str = "-shm";
+
+/// WAL mode wal file suffix.
+pub const DB_WAL_SUFFIX: &str = "-wal";
+
+/// Temporary file suffix during reindex.
+pub const DB_TMP_SUFFIX: &str = ".tmp";
+
+/// WAL mode shm file name.
 pub const DB_SHM_NAME: &str = ".ffts-index.db-shm";
+
+/// WAL mode wal file name.
 pub const DB_WAL_NAME: &str = ".ffts-index.db-wal";
+
+/// Temporary file name during reindex.
 pub const DB_TMP_NAME: &str = ".ffts-index.db.tmp";
+
+/// Temporary file glob for gitignore entries (covers suffix variants).
 pub const DB_TMP_GLOB: &str = ".ffts-index.db.tmp*";
 
-// Suffixes for file manipulation
-pub const DB_SHM_SUFFIX: &str = "-shm";
-pub const DB_WAL_SUFFIX: &str = "-wal";
-pub const DB_TMP_SUFFIX: &str = ".tmp";
-```
-
-**Lines 22-40**: Database constants. These define the filenames used by the application:
-- `.ffts-index.db` — Main database file
-- `.ffts-index.db-shm` — Shared memory file (WAL mode)
-- `.ffts-index.db-wal` — Write-Ahead Log file
-- `.ffts-index.db.tmp` — Temporary file for atomic operations
-- `.ffts-index.db.tmp*` — Gitignore pattern for unique temp suffixes
-
-### Module Re-exports
-
-```rust
-// Re-export modules for cleaner public API (lib.rs:42-49)
 pub mod cli;
 pub mod db;
 pub mod doctor;
@@ -84,38 +88,31 @@ pub mod health;
 pub mod indexer;
 pub mod init;
 pub mod search;
+
+pub use cli::OutputFormat;
+pub use db::{Database, PragmaConfig, SchemaCheck, SearchResult};
+pub use doctor::{
+    CheckResult, Doctor, DoctorOutput, DoctorSummary, EXPECTED_APPLICATION_ID, Severity,
+};
+pub use error::{ExitCode, IndexerError, Result};
+pub use health::{
+    DatabaseHealth, DetectionMethod, ProjectRoot, auto_init, auto_init_with_config,
+    backup_and_reinit, backup_and_reinit_with_config, check_health_fast, find_project_root,
+};
+pub use indexer::{IndexStats, Indexer, IndexerConfig};
+pub use init::{GitignoreResult, InitResult, check_gitignore, gitignore_entries, update_gitignore};
+pub use search::{SearchConfig, Searcher};
 ```
 
-**Lines 42-49**: The `pub mod` declarations make these modules public. Without `pub`, they would be private internal modules.
+### Key Observations
 
-**Why re-export modules?** It gives users a cleaner import:
+**Lines 1-29**: Module documentation with a complete working example using `tempdir` for doctest safety.
 
-```rust
-// Without re-export (ugly):
-use ffts_indexer::db::Database;
-use ffts_indexer::indexer::Indexer;
+**Lines 31-53**: Database constants - both names and suffixes for all database-related files.
 
-// With re-export (clean):
-use ffts_indexer::{Database, Indexer};
-```
+**Lines 55-62**: Public module declarations using `pub mod`.
 
-### Type Re-exports
-
-```rust
-// Re-export key types (lib.rs:51-63)
-pub use crate::db::{Database, Indexer, Searcher};
-pub use crate::doctor::Doctor;
-pub use crate::error::{Error, ExitCode, Result};
-pub use crate::health::DatabaseHealth;
-pub use crate::indexer::{IndexerConfig, IndexStats};
-pub use crate::init::{GitignoreResult, InitResult};
-```
-
-**Lines 51-63**: `pub use` statements re-export specific types from modules. This is even cleaner than module re-exports—users can import types directly:
-
-```rust
-use ffts_indexer::{Database, Indexer, Searcher, Result};
-```
+**Lines 64-76**: Public re-exports using `pub use` to provide a clean API surface.
 
 ---
 

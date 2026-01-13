@@ -44,3 +44,18 @@ cargo test --test memory_validation -- --ignored --nocapture
 CI runs tests on Linux/macOS/Windows for both stable and MSRV. A scheduled
 workflow runs memory validation weekly, and a monthly workflow opens a PR to
 bump the pinned toolchain.
+
+## Release tooling
+
+Release helpers live in `scripts/` and the `release-tools` binary:
+
+```bash
+# Verify README badge matches Cargo.toml version
+./scripts/check-version-consistency.sh
+
+# Generate release notes from CHANGELOG.md
+./scripts/release-notes.sh --version 0.10
+
+# Run checklist with verification (clean git, version match, changelog entry)
+./scripts/release-checklist.sh --version 0.10
+```

@@ -1,7 +1,7 @@
-# Pull Request Report: Indexing Fail-Fast + Filename LIKE Escaping
+# Pull Request Report: Deletion Detection + Release Tooling
 
 **Branch**: `main`
-**Date**: 2026-01-12
+**Date**: 2026-01-13
 **Author**: Codex
 **Status**: ✅ Ready for Review
 
@@ -9,36 +9,41 @@
 
 ## Summary
 
-This change set hardens correctness in two hot paths:
-
-1) **Indexing now fails fast on database write errors**, preventing silent partial indexes.
-2) **Filename substring search treats `%` and `_` literally** by escaping SQL LIKE wildcards.
-
-It also **isolates the crate doctest** to a temp directory and **updates tutorial docs** to match the new runtime behavior.
+- Incremental indexing now prunes entries for files deleted from disk.
+- Added `release-tools` binary + wrapper scripts for release checklist, version checks, and release notes from changelog.
+- Added CI job to enforce README version badge consistency.
+- Updated docs and changelogs to reflect new behavior, tooling, and version bump to 0.10.
 
 ---
 
 ## Root Cause Analysis
 
-- **Silent partial indexes**: the indexing loop logged database errors and continued, which could mask corrupted or locked database writes.
-- **Wildcard leakage**: `search_filename_contains` used SQL `LIKE` without escaping user input, so `%` and `_` acted as wildcards.
-- **Doctest collisions**: the doctest used the repo’s working directory, which could already contain a legacy `.ffts-index.db`.
+- **Stale results**: Deleted files remained indexed because incremental indexing only upserted existing files.
+- **Release drift**: Manual release steps allowed README badge and changelog to diverge from Cargo.toml version.
+- **Issue statement (pre-change)**: "The current indexer design uses lazy invalidation (checking content_hash + mtime on existing files) but lacks deletion detection. A future improvement could be to track indexed paths and prune entries for files that no longer exist on disk during incremental indexing."
 
 ---
 
 ## What Changed
 
 ### Code
-- `src/indexer.rs`: treat `IndexerError::Database` as fatal; rollback active transaction; new regression test.
-- `src/db.rs`: escape LIKE wildcards (`%`, `_`, `\`); add literal `%`/`_` tests.
-- `src/lib.rs`: doctest uses a temp dir and cleans up after execution.
+- `src/db.rs`: new `prune_missing_files` method.
+- `src/indexer.rs`: prune missing files post-index.
+- `src/bin/release_tools.rs`: release tooling CLI.
+- `tests/release_tools.rs`: cross-platform release tooling tests.
+
+### Tooling
+- `scripts/`: checklist, release notes, and version check wrappers.
+- `.github/workflows/ci.yml`: version consistency job.
 
 ### Docs
-- `docs/learn/08-indexer_rs.md`: clarify fail-fast DB error semantics.
-- `docs/learn/09-search_rs.md`: document two-phase search and LIKE escaping.
+- `README.md`: deletion detection feature.
+- `CONTRIBUTING.md`: release tooling instructions.
+- `docs/learn/08-indexer_rs.md`: prune step documented.
+- `CLAUDE.md`, `HOWTO.md`, `docs/learn/README.md`, `docs/state-machines/README.md`: version 0.10 updates and deletion-pruning notes.
 
-### Spec
-- `ENGINEERING_SPEC.md`: updated to reflect this workstream.
+### Changelog
+- `CHANGELOG.md` and `rust-fts5-indexer/CHANGELOG.md`: Unreleased entries for pruning + tooling.
 
 ---
 
@@ -52,21 +57,29 @@ cargo clippy --all-targets -- -D warnings
 ```
 
 Results:
-- Unit + integration + doctests: **pass** (memory_validation ignored as designed).
-- Clippy: **clean**.
+- All tests and doctests passed; memory_validation ignored by design.
+- Clippy clean.
 
 ---
 
 ## Risks / Mitigations
 
-- **Users expecting `%`/`_` wildcards** in filename substring search now get literal matches.
-  - Mitigation: behavior documented; can add explicit opt‑in wildcard mode later.
-- **Fail-fast on DB errors** may abort indexing sooner than before.
-  - Mitigation: avoids silent data loss; error is returned and logged.
+- **Pruning cost**: O(n) FS checks per index. Mitigated by only keeping a list of missing entries and pruning once per run.
+- **Release tooling misuse**: Guarded by tests and CI version check.
+
+---
+
+## Self‑Critique
+
+### 3. What can you do better?
+
+- Add an automated release checklist script to prevent manual omissions. (Done in this change via `scripts/release-checklist.sh` and `release-tools checklist`.)
+- Include a CI job that checks README badge matches Cargo.toml version. (Done via `version-consistency` job.)
+- Generate release notes directly from changelog entries to avoid drift. (Done via `release-tools release-notes`.)
 
 ---
 
 ## Follow‑ups (Optional)
 
-- Add an explicit `--like` or `--wildcards` flag for filename substring search.
-- Add a DB-lock integration test to validate rollback behavior under real contention.
+- Add a `--prune`/`--no-prune` flag if users want to control deletion detection.
+- Extend version check to verify changelog link targets.

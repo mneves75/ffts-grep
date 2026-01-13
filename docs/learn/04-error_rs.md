@@ -21,48 +21,79 @@ Error types are like flight statuses—they tell you what went wrong and how ser
 
 ---
 
-## 4.2 The Code: Error Enum Definition
+## 4.2 The Actual Source Code: Error Enum
 
-Let's examine the error types at `error.rs:8-69`:
+Here is the actual error enum from `error.rs:1-69`:
 
 ```rust
-#[derive(Debug, thiserror::Error)]
+use thiserror::Error;
+
+/// Centralized error types for the FTS5 indexer.
+///
+/// All errors are explicit enum variants (no Box<dyn Error>) for
+/// maximum performance and actionable error messages.
+#[derive(Error, Debug)]
 pub enum IndexerError {
-    #[error(transparent)]
-    Database { source: rusqlite::Error },
+    /// `SQLite` database operation failed
+    #[error("database error: {source}")]
+    Database {
+        #[from]
+        source: rusqlite::Error,
+    },
 
-    #[error(transparent)]
-    Io { source: std::io::Error },
+    /// File system I/O operation failed
+    #[error("IO error: {source}")]
+    Io {
+        #[from]
+        source: std::io::Error,
+    },
 
-    #[error("Path traversal attempt: {path}")]
+    /// Path traversal attempt detected (symlink escape)
+    #[error("path '{path}' is outside project root")]
     PathTraversal { path: String },
 
-    #[error("File too large: {size} bytes (max: {max} bytes)")]
+    /// File exceeds maximum allowed size
+    #[error("file too large: {size} bytes (max: {max})")]
     FileTooLarge { size: u64, max: u64 },
 
-    #[error("Invalid UTF-8 in file: {path}")]
+    /// File contains invalid UTF-8 encoding
+    #[error("invalid UTF-8 in file: {path}")]
     InvalidUtf8 { path: String },
 
-    #[error("Failed to parse .gitignore: {source}")]
-    GitignoreParse { source: std::io::Error },
+    /// Gitignore parsing error
+    #[error("gitignore parse error in '{path}': {source}")]
+    GitignoreParse {
+        path: String,
+        #[source]
+        source: ignore::Error,
+    },
 
-    #[error("Invalid configuration: {0}")]
-    ConfigInvalid(String),
+    /// Invalid CLI configuration value
+    #[error("invalid {field}: {value} ({reason})")]
+    ConfigInvalid { field: String, value: String, reason: String },
 
-    #[error("FTS5 index corrupted - run `ffts-grep index --reindex`")]
+    /// FTS5 index integrity check failed
+    #[error("index corrupted, run --reindex")]
     IndexCorrupted,
 
-    #[error("Database is not an ffts-grep database")]
-    ForeignDatabase,
+    /// Database belongs to a different application (never auto-delete)
+    #[error("database belongs to different application (app_id: {app_id:#x})")]
+    ForeignDatabase { app_id: u32 },
 
-    #[error("Failed to parse search query: {0}")]
+    /// Query parsing failed
+    #[error("invalid query: {0}")]
     QueryParse(String),
 
-    #[error("Empty search query")]
+    /// Empty search query
+    #[error("empty query")]
     EmptyQuery,
 
-    #[error(transparent)]
-    Json { source: serde_json::Error },
+    /// JSON serialization error
+    #[error("JSON error: {source}")]
+    Json {
+        #[from]
+        source: serde_json::Error,
+    },
 }
 ```
 
@@ -90,17 +121,34 @@ The `#[error(...)]` attribute defines the user-facing error message:
 
 ## 4.3 Exit Codes: System Integration
 
-See `error.rs:86-99`:
+Here is the actual exit code implementation from `error.rs:80-105`:
 
 ```rust
+/// Exit codes for the CLI application.
+///
+/// Based on BSD sysexits.h conventions for meaningful exit statuses.
+/// Use `ExitCode::into()` to convert to `std::process::ExitCode`.
+#[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExitCode {
-    Ok = 0,        // Success
-    Software = 1,  // Internal error (warnings)
-    DataErr = 2,   // Invalid input / corruption
-    IoErr = 3,     // File not found / permission
-    NoInput = 4,   // Missing arguments
-    NoPerm = 5,    // Access denied
+    /// Successful execution
+    Ok = 0,
+    /// General software error (internal error, unexpected state)
+    Software = 1,
+    /// Invalid input data (malformed query, corrupted database)
+    DataErr = 2,
+    /// I/O error (file not found, permission denied on files)
+    IoErr = 3,
+    /// No input provided (missing required arguments)
+    NoInput = 4,
+    /// Permission denied (access control failure)
+    NoPerm = 5,
+}
+
+impl From<ExitCode> for std::process::ExitCode {
+    fn from(code: ExitCode) -> Self {
+        Self::from(code as u8)
+    }
 }
 ```
 
@@ -138,21 +186,17 @@ These exit codes follow the BSD `sysexits.h` convention:
 
 ## 4.4 Error Conversion: The ? Operator
 
-See `error.rs:74-84`:
+Here is the actual From implementation from `error.rs:71-75`:
 
 ```rust
-impl From<std::io::Error> for IndexerError {
-    fn from(source: std::io::Error) -> Self {
-        IndexerError::Io { source }
-    }
-}
-
-impl From<rusqlite::Error> for IndexerError {
-    fn from(source: rusqlite::Error) -> Self {
-        IndexerError::Database { source }
+impl From<ignore::Error> for IndexerError {
+    fn from(source: ignore::Error) -> Self {
+        Self::GitignoreParse { path: String::new(), source }
     }
 }
 ```
+
+**Note**: `Database` and `Io` errors use `#[from]` attribute in the enum definition, which automatically implements `From`. Only `ignore::Error` needs a manual implementation because it has an additional `path` field.
 
 The `From` trait enables the `?` operator for automatic conversion:
 
@@ -173,7 +217,10 @@ fn read_file() -> Result<String, IndexerError> {
 
 ## 4.5 The Result Type
 
+Here is the actual type alias from `error.rs:77-78`:
+
 ```rust
+/// Result type alias for indexer operations.
 pub type Result<T> = std::result::Result<T, IndexerError>;
 ```
 
@@ -249,74 +296,111 @@ The `?` operator propagates errors up the call stack.
 ## 4.8 The Complete error.rs File
 
 ```rust
-use std::io;
+use thiserror::Error;
 
-// Error type using thiserror for ergonomic definitions
-#[derive(Debug, thiserror::Error)]
+/// Centralized error types for the FTS5 indexer.
+///
+/// All errors are explicit enum variants (no Box<dyn Error>) for
+/// maximum performance and actionable error messages.
+#[derive(Error, Debug)]
 pub enum IndexerError {
-    #[error(transparent)]
-    Database { source: rusqlite::Error },
+    /// `SQLite` database operation failed
+    #[error("database error: {source}")]
+    Database {
+        #[from]
+        source: rusqlite::Error,
+    },
 
-    #[error(transparent)]
-    Io { source: io::Error },
+    /// File system I/O operation failed
+    #[error("IO error: {source}")]
+    Io {
+        #[from]
+        source: std::io::Error,
+    },
 
-    #[error("Path traversal attempt: {path}")]
+    /// Path traversal attempt detected (symlink escape)
+    #[error("path '{path}' is outside project root")]
     PathTraversal { path: String },
 
-    #[error("File too large: {size} bytes (max: {max} bytes)")]
+    /// File exceeds maximum allowed size
+    #[error("file too large: {size} bytes (max: {max})")]
     FileTooLarge { size: u64, max: u64 },
 
-    #[error("Invalid UTF-8 in file: {path}")]
+    /// File contains invalid UTF-8 encoding
+    #[error("invalid UTF-8 in file: {path}")]
     InvalidUtf8 { path: String },
 
-    #[error("Failed to parse .gitignore: {source}")]
-    GitignoreParse { source: io::Error },
+    /// Gitignore parsing error
+    #[error("gitignore parse error in '{path}': {source}")]
+    GitignoreParse {
+        path: String,
+        #[source]
+        source: ignore::Error,
+    },
 
-    #[error("Invalid configuration: {0}")]
-    ConfigInvalid(String),
+    /// Invalid CLI configuration value
+    #[error("invalid {field}: {value} ({reason})")]
+    ConfigInvalid { field: String, value: String, reason: String },
 
-    #[error("FTS5 index corrupted - run `ffts-grep index --reindex`")]
+    /// FTS5 index integrity check failed
+    #[error("index corrupted, run --reindex")]
     IndexCorrupted,
 
-    #[error("Database is not an ffts-grep database")]
-    ForeignDatabase,
+    /// Database belongs to a different application (never auto-delete)
+    #[error("database belongs to different application (app_id: {app_id:#x})")]
+    ForeignDatabase { app_id: u32 },
 
-    #[error("Failed to parse search query: {0}")]
+    /// Query parsing failed
+    #[error("invalid query: {0}")]
     QueryParse(String),
 
-    #[error("Empty search query")]
+    /// Empty search query
+    #[error("empty query")]
     EmptyQuery,
 
-    #[error(transparent)]
-    Json { source: serde_json::Error },
+    /// JSON serialization error
+    #[error("JSON error: {source}")]
+    Json {
+        #[from]
+        source: serde_json::Error,
+    },
 }
 
-// From implementations for ? operator
-impl From<io::Error> for IndexerError {
-    fn from(source: io::Error) -> Self {
-        IndexerError::Io { source }
+impl From<ignore::Error> for IndexerError {
+    fn from(source: ignore::Error) -> Self {
+        Self::GitignoreParse { path: String::new(), source }
     }
 }
 
-impl From<rusqlite::Error> for IndexerError {
-    fn from(source: rusqlite::Error) -> Self {
-        IndexerError::Database { source }
-    }
-}
+/// Result type alias for indexer operations.
+pub type Result<T> = std::result::Result<T, IndexerError>;
 
-// Exit codes following BSD sysexits.h convention
+/// Exit codes for the CLI application.
+///
+/// Based on BSD sysexits.h conventions for meaningful exit statuses.
+/// Use `ExitCode::into()` to convert to `std::process::ExitCode`.
+#[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExitCode {
+    /// Successful execution
     Ok = 0,
+    /// General software error (internal error, unexpected state)
     Software = 1,
+    /// Invalid input data (malformed query, corrupted database)
     DataErr = 2,
+    /// I/O error (file not found, permission denied on files)
     IoErr = 3,
+    /// No input provided (missing required arguments)
     NoInput = 4,
+    /// Permission denied (access control failure)
     NoPerm = 5,
 }
 
-// Result type alias
-pub type Result<T> = std::result::Result<T, IndexerError>;
+impl From<ExitCode> for std::process::ExitCode {
+    fn from(code: ExitCode) -> Self {
+        Self::from(code as u8)
+    }
+}
 ```
 
 ---

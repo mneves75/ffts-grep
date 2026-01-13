@@ -16,6 +16,7 @@ A high-performance file indexer that provides ~10ms queries on 10K file codebase
 - **Filename-aware ranking** - Files with query terms in filename rank higher (e.g., `CLAUDE.md` ranks above `docs/MASTRA-VS-CLAUDE-SDK.md` for "claude")
 - **~10ms queries** on 10K file codebases (benchmarked)
 - **Incremental updates** - Only reindexes modified files
+- **Deletion detection** - Prunes entries for files removed from disk
 - **Content search** - Search filenames, paths, and file contents
 - **Single binary** - No external dependencies (bundled SQLite)
 - **Git-aware filtering** - Respects root `.gitignore` and always ignores `.git/`

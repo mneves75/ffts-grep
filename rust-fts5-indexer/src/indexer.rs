@@ -175,6 +175,11 @@ impl Indexer {
                 .map_err(|e| IndexerError::Database { source: e })?;
         }
 
+        let pruned = self.db.prune_missing_files(&self.root)?;
+        if pruned > 0 {
+            tracing::info!(pruned, "Pruned missing files");
+        }
+
         // SQLite-GUIDELINES.md: Run ANALYZE after bulk changes for query optimization
         self.db.conn().execute("ANALYZE", []).ok();
 
@@ -584,6 +589,27 @@ mod tests {
 
         let stats = indexer.index_directory().unwrap();
         assert_eq!(stats.files_indexed, 1);
+    }
+
+    #[test]
+    fn test_prunes_missing_files() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join(DB_NAME);
+        let config = IndexerConfig::default();
+        let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+        db.init_schema().unwrap();
+        let mut indexer = Indexer::new(dir.path(), db, config);
+
+        let file_path = dir.path().join("gone.rs");
+        fs::write(&file_path, "fn gone() {}").unwrap();
+
+        indexer.index_directory().unwrap();
+        assert_eq!(indexer.db().get_file_count().unwrap(), 1);
+
+        fs::remove_file(&file_path).unwrap();
+
+        indexer.index_directory().unwrap();
+        assert_eq!(indexer.db().get_file_count().unwrap(), 0);
     }
 
     #[test]

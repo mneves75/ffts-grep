@@ -2,8 +2,8 @@
 
 Visual documentation of the ffts-grep (Rust FTS5 Indexer) component state machines using Mermaid diagrams.
 
-**Generated**: 2026-01-11
-**Source Version**: 0.9 (see `Cargo.toml`)
+**Generated**: 2026-01-13
+**Source Version**: 0.10 (see `Cargo.toml`)
 
 ## Diagrams
 
@@ -37,13 +37,13 @@ RESET = 50 (not 0!)    → After commit, reset to threshold
 
 **Why?** Transaction overhead dominates for small operations (<50 files).
 
-### 2. Lazy Invalidation
+### 2. Lazy Invalidation + Deletion Pruning
 ```sql
 ON CONFLICT(path) DO UPDATE SET ...
 WHERE excluded.content_hash !=
       (SELECT content_hash FROM files WHERE path = excluded.path)
 ```
-Skip FTS5 rebuild if content unchanged (same wyhash).
+Skip FTS5 rebuild if content unchanged (same wyhash). After indexing, prune missing paths to remove deleted files from the index.
 
 ### 3. FTS5 Auto-Sync Triggers
 - `files_ai` (AFTER INSERT) → Insert into FTS5

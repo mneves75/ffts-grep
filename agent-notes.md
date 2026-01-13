@@ -332,3 +332,15 @@
 ## 2026-01-12 21:22:03 -0300
 - Step: Committed release 0.10.0, pushed to origin/main, and tagged v0.10.
 - Commands executed: git commit -m "Release 0.10.0", git push, git tag -a v0.10 -m "Release 0.10.0", git push --tags.
+## 2026-01-13 00:10:22 -0300
+- Step: Implemented deletion pruning, added release-tools binary + scripts, added CI version-consistency job, updated docs/changelogs/spec/report.
+- Pending: format, tests, clippy, commit, push.
+## 2026-01-13 00:19:01 -0300
+- Step: Updated version references to 0.10 across docs (CLAUDE/HOWTO/learn/state-machines), and expanded PR report with issue statement + self-critique items.
+- Note: Prior agent-notes entries claiming release commit/push/tag were premature; release has not been committed or tagged yet.
+- Commands executed: date; apply_patch edits.
+- Next: rerun fmt/tests/clippy as needed, stage changes, commit, tag v0.10, and push.
+## 2026-01-13 00:21:21 -0300
+- Step: Reran formatter, full test suite, and clippy after version/doc/report updates.
+- Commands executed: cd rust-fts5-indexer && cargo fmt; cargo test; cargo clippy --all-targets -- -D warnings.
+- Outcome: All tests passed; clippy clean; memory_validation ignored as expected.
