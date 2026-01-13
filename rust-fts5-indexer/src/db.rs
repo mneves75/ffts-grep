@@ -5,6 +5,10 @@ use std::time::Duration;
 
 use crate::error::{IndexerError, Result};
 
+const APPLICATION_ID_U32: u32 = 0xA17E_6D42;
+// SQLite stores application_id as signed 32-bit integer; keep the bit pattern intact.
+const APPLICATION_ID_I32: i32 = i32::from_ne_bytes(APPLICATION_ID_U32.to_ne_bytes());
+
 /// Search result returned by FTS5 queries.
 #[derive(Debug, Clone)]
 pub struct SearchResult {
@@ -126,10 +130,8 @@ impl Database {
         Self::apply_pragma(&conn, "foreign_keys", "ON")?;
         Self::apply_pragma(&conn, "trusted_schema", "OFF")?;
         // Application ID: 0xA17E_6D42 signature for cc-fts5-indexer
-        // Safety: SQLite application_id is a signed 32-bit integer but used as unsigned identifier
-        // This specific value (2,710,531,394) is well within i32 positive range
-        #[allow(clippy::cast_possible_wrap)]
-        Self::apply_pragma(&conn, "application_id", 0xA17E_6D42_u32 as i32)?;
+        // SQLite application_id is stored as i32; keep the intended bit pattern.
+        Self::apply_pragma(&conn, "application_id", APPLICATION_ID_I32)?;
 
         // Safety: i64→u64 cast is safe for non-negative timeout values
         // config.busy_timeout_ms is always positive (default 5000ms)

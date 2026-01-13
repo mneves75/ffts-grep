@@ -131,7 +131,7 @@ const APPLICATION_ID: i32 = 0xA17E_6D42_u32 as i32; // -1,584,435,902 (bit patte
 conn.pragma_update(None, "application_id", APPLICATION_ID)?;
 ```
 
-**Decision**: **TODO** - Refactor to use i32 constant directly (no cast at pragma site)
+**Decision**: **RESOLVED** - Store a dedicated i32 constant with the correct bit pattern and use it when setting `application_id`.
 
 ---
 
@@ -407,7 +407,8 @@ cargo bench --bench search_bench -- --baseline before
 - Negative timeout values in CLI
 - Concurrent access during signature change (WAL mode should handle, but not tested)
 
-**Recommendation**: Add edge case tests in follow-up (not blocking for clippy compliance)
+**Recommendation**: Add edge case tests in follow-up (not blocking for clippy compliance).  
+**Status**: Added overflow guards for mtime/size and tests for out-of-range conversions in `indexer.rs`.
 
 ---
 
@@ -418,7 +419,8 @@ cargo bench --bench search_bench -- --baseline before
 - Why 50-file transaction threshold was chosen (in agent-notes.md but not user-facing docs)
 - What happens if SQLite version changes and pragma defaults differ
 
-**Recommendation**: Add "Assumptions & Limits" section to README.md
+**Recommendation**: Add "Assumptions & Limits" section to README.md  
+**Status**: Added in `README.md`.
 
 ---
 
@@ -429,12 +431,12 @@ cargo bench --bench search_bench -- --baseline before
 - [x] All tests pass (148/148)
 - [x] Semantic equivalence verified (let...else, associated functions)
 - [x] **VERIFIED**: Config validation exists (all pragma fields validated) ✅
-- [ ] **TODO**: Application ID constant should use i32 directly ⚠️
+- [x] Application ID constant uses i32 directly (no cast at pragma site)
 
 ### Safety
 - [x] All type casts documented
 - [x] Domain limits specified (year 2262, 8 EiB, etc.)
-- [ ] **TODO**: Runtime assertions for critical casts (optional) ⚠️
+- [x] Runtime assertions for critical casts (mtime/size) ✅
 - [x] No unsafe code introduced
 
 ### Maintainability
@@ -451,8 +453,8 @@ cargo bench --bench search_bench -- --baseline before
 ### Completeness
 - [x] All clippy warnings resolved
 - [x] Tests cover existing functionality
-- [ ] **TODO**: Edge case tests (far-future timestamps, negative configs) ⚠️
-- [ ] **TODO**: Documentation of assumptions ⚠️
+- [x] Edge case tests for conversion overflow; negative config tests already covered ✅
+- [x] Documentation of assumptions added ✅
 
 ---
 
@@ -472,7 +474,7 @@ cargo bench --bench search_bench -- --baseline before
    - Impact: MEDIUM (confidence in claims)
    - Effort: 15 minutes
 
-2. **Application ID Constant**: Use i32 directly instead of u32→i32 cast
+2. **Application ID Constant**: Use i32 directly instead of u32→i32 cast (done)
    - Impact: LOW (code clarity)
    - Effort: 10 minutes
 

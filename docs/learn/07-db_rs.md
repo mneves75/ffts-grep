@@ -131,8 +131,8 @@ impl Database {
         Self::apply_pragma(&conn, "foreign_keys", "ON")?;
         Self::apply_pragma(&conn, "trusted_schema", "OFF")?;
         // Application ID: 0xA17E_6D42 signature for cc-fts5-indexer
-        #[allow(clippy::cast_possible_wrap)]
-        Self::apply_pragma(&conn, "application_id", 0xA17E_6D42_u32 as i32)?;
+        // Stored as i32 to preserve the intended bit pattern in SQLite.
+        Self::apply_pragma(&conn, "application_id", APPLICATION_ID_I32)?;
 
         #[allow(clippy::cast_sign_loss)]
         let busy_timeout = Duration::from_millis(config.busy_timeout_ms as u64);
@@ -291,10 +291,8 @@ The application ID is set during database opening at `db.rs:126-132`:
 
 ```rust
 // Application ID: 0xA17E_6D42 signature for cc-fts5-indexer
-// Safety: SQLite application_id is a signed 32-bit integer but used as unsigned identifier
-// This specific value (2,710,531,394) is well within i32 positive range
-#[allow(clippy::cast_possible_wrap)]
-Self::apply_pragma(&conn, "application_id", 0xA17E_6D42_u32 as i32)?;
+// Stored as i32 to preserve the intended bit pattern in SQLite.
+Self::apply_pragma(&conn, "application_id", APPLICATION_ID_I32)?;
 ```
 
 The application ID (`0xA17E_6D42`) is a unique identifier for ffts-grep databases. This prevents accidentally using a different SQLite database as if it were ours.

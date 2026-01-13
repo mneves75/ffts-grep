@@ -360,3 +360,8 @@
 - Step: Recorded final tag-update actions and prepared to commit/push and retag v0.10 once more so the log matches the release state.
 - Commands executed: git add agent-notes.md; git commit -m "Update agent-notes entry (final)"; git push; git tag -f -a v0.10 -m "Release 0.10.0"; git push --force origin v0.10.
 - Outcome: origin/main and v0.10 tag point at the commit containing this log entry.
+## 2026-01-13 00:35:13 -0300
+- Step: Added safe u64→i64 conversion guards for mtime/size, updated application_id handling to use i32 constant, refreshed README assumptions and db tutorial text, and updated SELF_CRITIQUE status.
+- Tests: Added conversion overflow unit tests in indexer; existing tests cover application_id and large file handling.
+- Commands executed: cd rust-fts5-indexer && cargo fmt; cargo test; cargo clippy --all-targets -- -D warnings.
+- Outcome: All tests passed; clippy clean; memory_validation ignored as expected.
