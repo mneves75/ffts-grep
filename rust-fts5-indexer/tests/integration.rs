@@ -960,7 +960,7 @@ fn test_conditional_transaction_threshold_behavior() {
 /// This tests the health check flow that gates search operations.
 #[test]
 fn test_health_state_machine_transitions() {
-    use ffts_indexer::EXPECTED_APPLICATION_ID;
+    use ffts_indexer::constants::APPLICATION_ID_I32;
     use ffts_indexer::health::{DatabaseHealth, check_health_fast};
 
     // State 1: Missing - no database file
@@ -1001,7 +1001,7 @@ fn test_health_state_machine_transitions() {
     // State 5: SchemaInvalid - correct app ID but incomplete schema
     let dir_invalid = tempdir().unwrap();
     let conn = rusqlite::Connection::open(dir_invalid.path().join(DB_NAME)).unwrap();
-    conn.pragma_update(None, "application_id", EXPECTED_APPLICATION_ID as i32).unwrap();
+    conn.pragma_update(None, "application_id", APPLICATION_ID_I32).unwrap();
     // Only create partial schema (missing FTS, triggers, indexes)
     conn.execute("CREATE TABLE files (path TEXT PRIMARY KEY, content TEXT)", []).unwrap();
     drop(conn);

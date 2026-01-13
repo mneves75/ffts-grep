@@ -385,3 +385,7 @@
 - Step: Committed constants module changes, pushed to origin/main, and retagged v0.10 to point at the new release commit.
 - Commands executed: git commit -m "Centralize application ID constants"; git push; git tag -f -a v0.10 -m "Release 0.10.0"; git push --force origin v0.10.
 - Outcome: origin/main and v0.10 tag now point at commit bfd0f71.
+## 2026-01-13 00:48:47 -0300
+- Step: Cleaned up unused imports after APPLICATION_ID_I32 adoption, reran fmt/tests/clippy.
+- Commands executed: cd rust-fts5-indexer && cargo fmt; cargo test; cargo clippy --all-targets -- -D warnings.
+- Outcome: All tests passed; clippy clean; memory_validation ignored as expected.
