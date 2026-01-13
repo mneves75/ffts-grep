@@ -295,7 +295,7 @@ The application ID is set during database opening at `db.rs:126-132`:
 Self::apply_pragma(&conn, "application_id", APPLICATION_ID_I32)?;
 ```
 
-The application ID (`0xA17E_6D42`) is a unique identifier for ffts-grep databases. This prevents accidentally using a different SQLite database as if it were ours.
+The application ID (`0xA17E_6D42`) is a unique identifier for ffts-grep databases. It lives in `constants.rs` and is stored as an i32 to preserve the bit pattern in SQLite, preventing accidental use of unrelated databases.
 
 ---
 

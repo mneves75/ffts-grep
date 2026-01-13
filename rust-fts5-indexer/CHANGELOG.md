@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Release tooling**: `release-tools` binary for release notes, checklist, and version checks
 - **CI guardrail**: Version badge consistency check
 - **Safety guards**: Checked conversions for file mtime/size to avoid overflow
+- **Constants**: Centralized application_id constants to avoid casting surprises
 
 ### Fixed
 
