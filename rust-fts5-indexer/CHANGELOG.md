@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Tests**: Added coverage for two-phase search, auto-prefix behavior, DB error handling, and literal `%`/`_` filename queries
 - **Release tooling**: `release-tools` binary for release notes, checklist, and version checks
 - **CI guardrail**: Version badge consistency check
+- **Safety guards**: Checked conversions for file mtime/size to avoid overflow
 
 ### Fixed
 

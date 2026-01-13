@@ -1,4 +1,4 @@
-# Pull Request Report: Deletion Detection + Release Tooling
+# Pull Request Report: Deletion Detection + Release Tooling + Safety Guards
 
 **Branch**: `main`
 **Date**: 2026-01-13
@@ -12,6 +12,7 @@
 - Incremental indexing now prunes entries for files deleted from disk.
 - Added `release-tools` binary + wrapper scripts for release checklist, version checks, and release notes from changelog.
 - Added CI job to enforce README version badge consistency.
+- Hardened metadata casts (mtime/size) with checked conversions and tests; clarified application_id storage.
 - Updated docs and changelogs to reflect new behavior, tooling, and version bump to 0.10.
 
 ---
@@ -20,6 +21,7 @@
 
 - **Stale results**: Deleted files remained indexed because incremental indexing only upserted existing files.
 - **Release drift**: Manual release steps allowed README badge and changelog to diverge from Cargo.toml version.
+- **Safety gap**: u64→i64 casts for mtime/size were unchecked; application_id was set via a runtime cast.
 - **Issue statement (pre-change)**: "The current indexer design uses lazy invalidation (checking content_hash + mtime on existing files) but lacks deletion detection. A future improvement could be to track indexed paths and prune entries for files that no longer exist on disk during incremental indexing."
 
 ---
@@ -29,6 +31,8 @@
 ### Code
 - `src/db.rs`: new `prune_missing_files` method.
 - `src/indexer.rs`: prune missing files post-index.
+- `src/indexer.rs`: checked u64→i64 conversions for mtime/size with overflow tests.
+- `src/db.rs`: application_id stored via a dedicated i32 constant (no cast at pragma site).
 - `src/bin/release_tools.rs`: release tooling CLI.
 - `tests/release_tools.rs`: cross-platform release tooling tests.
 
@@ -40,10 +44,13 @@
 - `README.md`: deletion detection feature.
 - `CONTRIBUTING.md`: release tooling instructions.
 - `docs/learn/08-indexer_rs.md`: prune step documented.
+- `docs/learn/07-db_rs.md`: application_id snippet updated.
+- `README.md`: Assumptions & Limits section added.
+- `rust-fts5-indexer/SELF_CRITIQUE.md`: TODOs updated to reflect resolved items.
 - `CLAUDE.md`, `HOWTO.md`, `docs/learn/README.md`, `docs/state-machines/README.md`: version 0.10 updates and deletion-pruning notes.
 
 ### Changelog
-- `CHANGELOG.md` and `rust-fts5-indexer/CHANGELOG.md`: Unreleased entries for pruning + tooling.
+- `CHANGELOG.md` and `rust-fts5-indexer/CHANGELOG.md`: 0.10 entries updated for pruning + tooling.
 
 ---
 
@@ -66,6 +73,7 @@ Results:
 
 - **Pruning cost**: O(n) FS checks per index. Mitigated by only keeping a list of missing entries and pruning once per run.
 - **Release tooling misuse**: Guarded by tests and CI version check.
+- **Out-of-range metadata**: mtime/size overflow now guarded; files are skipped with a warning instead of corrupting stored values.
 
 ---
 
