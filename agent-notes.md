@@ -381,3 +381,7 @@
 - Step: Ran fmt/tests/clippy; fixed clippy doc-comment error in doctor.rs and re-ran clippy clean.
 - Commands executed: cd rust-fts5-indexer && cargo fmt; cargo test; cargo clippy --all-targets -- -D warnings.
 - Outcome: All tests passed; clippy clean; memory_validation ignored as expected.
+## 2026-01-13 00:44:42 -0300
+- Step: Committed constants module changes, pushed to origin/main, and retagged v0.10 to point at the new release commit.
+- Commands executed: git commit -m "Centralize application ID constants"; git push; git tag -f -a v0.10 -m "Release 0.10.0"; git push --force origin v0.10.
+- Outcome: origin/main and v0.10 tag now point at commit bfd0f71.
