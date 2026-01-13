@@ -100,7 +100,7 @@ fn test_index_memory_claim() {
 
         // Linux format: "Maximum resident set size (kbytes): 16384"
         if let Some(line) = stderr.lines().find(|l| l.contains("Maximum resident set size")) {
-            let kb: u64 = line.split(':').last().unwrap_or("0").trim().parse().unwrap_or(0);
+            let kb: u64 = line.rsplit(':').next().unwrap_or("0").trim().parse().unwrap_or(0);
             let mb = kb as f64 / 1000.0;
             eprintln!("Peak RSS: {mb:.1} MB");
 
@@ -180,7 +180,7 @@ fn test_search_memory_claim() {
         eprintln!("Time output:\n{stderr}");
 
         if let Some(line) = stderr.lines().find(|l| l.contains("Maximum resident set size")) {
-            let kb: u64 = line.split(':').last().unwrap_or("0").trim().parse().unwrap_or(0);
+            let kb: u64 = line.rsplit(':').next().unwrap_or("0").trim().parse().unwrap_or(0);
             let mb = kb as f64 / 1000.0;
             eprintln!("Peak RSS: {mb:.1} MB");
 

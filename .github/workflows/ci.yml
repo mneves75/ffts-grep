@@ -33,6 +33,9 @@ jobs:
           rustflags: ""
       - name: Run tests
         run: cargo test
+      - name: Windows directory sync smoke test
+        if: matrix.os == 'windows-latest'
+        run: cargo test fs_utils::tests::test_sync_parent_dir_ok -- --nocapture
 
   lint:
     runs-on: ubuntu-latest

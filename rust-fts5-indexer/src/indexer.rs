@@ -7,6 +7,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::db::Database;
 use crate::error::{IndexerError, Result};
+use crate::fs_utils::{sync_file, sync_parent_dir};
 use crate::{DB_NAME, DB_SHM_SUFFIX, DB_TMP_NAME, DB_TMP_SUFFIX, DB_WAL_SUFFIX};
 #[cfg(windows)]
 use std::os::windows::ffi::OsStrExt;
@@ -76,13 +77,22 @@ fn atomic_replace(from: &Path, to: &Path) -> Result<()> {
 pub struct Indexer {
     db: Database,
     root: PathBuf,
+    root_canonical: PathBuf,
     config: IndexerConfig,
 }
 
 impl Indexer {
     /// Create a new indexer for the given project root.
     pub fn new(root: &Path, db: Database, config: IndexerConfig) -> Self {
-        Self { db, root: root.to_path_buf(), config }
+        let root_canonical = root.canonicalize().unwrap_or_else(|err| {
+            tracing::warn!(
+                path = %root.display(),
+                error = %err,
+                "Failed to canonicalize root; symlink containment checks may be overly strict"
+            );
+            root.to_path_buf()
+        });
+        Self { db, root: root.to_path_buf(), root_canonical, config }
     }
 
     /// Index all files in the project directory (incremental).
@@ -340,8 +350,8 @@ impl Indexer {
     /// Called for symlink resolution. Marked `#[inline]` for hot-path optimization.
     #[inline]
     fn is_within_root(&self, path: &Path) -> bool {
-        // Path must start with root prefix
-        if let Ok(rel_path) = path.strip_prefix(&self.root) {
+        // Path must start with canonical root prefix
+        if let Ok(rel_path) = path.strip_prefix(&self.root_canonical) {
             // Ensure no ".." components that could escape
             for component in rel_path.components() {
                 if component == std::path::Component::ParentDir {
@@ -350,6 +360,17 @@ impl Indexer {
             }
             return true;
         }
+
+        // Fallback: handle non-canonical paths (e.g., unit tests or callers)
+        if let Ok(rel_path) = path.strip_prefix(&self.root) {
+            for component in rel_path.components() {
+                if component == std::path::Component::ParentDir {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         false
     }
 
@@ -482,8 +503,15 @@ pub fn atomic_reindex_with_config(
     // Close database before replacing file to avoid WAL/file descriptor issues
     drop(indexer);
 
+    // Ensure data is flushed before renaming.
+    // This reduces the risk of ending up with a zero-length or partially written file after a crash.
+    sync_file(&tmp_path).map_err(|e| IndexerError::Io { source: e })?;
+
     // Atomic rename (Windows requires replace strategy)
     atomic_replace(&tmp_path, &db_path)?;
+
+    // Ensure the rename is durable on filesystems that require directory fsync.
+    sync_parent_dir(&db_path).map_err(|e| IndexerError::Io { source: e })?;
 
     // Clean up WAL files from old database (if exists) after rename
     let _ = fs::remove_file(root.join(format!("{DB_NAME}{DB_SHM_SUFFIX}")));
@@ -767,6 +795,32 @@ mod tests {
         assert!(!indexer.is_within_root(&outside));
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn test_is_within_root_symlink_root() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempdir().unwrap();
+        let real_root = dir.path().join("real");
+        fs::create_dir_all(&real_root).unwrap();
+        let link_root = dir.path().join("link");
+        symlink(&real_root, &link_root).unwrap();
+
+        let db_path = link_root.join(DB_NAME);
+        let db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+        db.init_schema().unwrap();
+        let indexer = Indexer::new(&link_root, db, IndexerConfig::default());
+
+        let inside = real_root.join("inside.rs");
+        fs::write(&inside, "fn main() {}").unwrap();
+        let canonical = fs::canonicalize(&inside).unwrap();
+
+        assert!(
+            indexer.is_within_root(&canonical),
+            "Canonicalized path inside symlinked root should be allowed"
+        );
+    }
+
     #[test]
     fn test_read_file_content_rejects_growth_beyond_max() {
         let dir = tempdir().unwrap();
@@ -856,11 +910,11 @@ mod tests {
         symlink(&target, &link).unwrap();
 
         let stats = indexer.index_directory().unwrap();
-        assert_eq!(stats.files_indexed, 1);
+        assert_eq!(stats.files_indexed, 2);
 
         let files = indexer.db().get_all_files(10).unwrap();
         assert!(files.contains(&"target.rs".to_string()));
-        assert!(!files.contains(&"link.rs".to_string()));
+        assert!(files.contains(&"link.rs".to_string()));
     }
 
     #[cfg(unix)]

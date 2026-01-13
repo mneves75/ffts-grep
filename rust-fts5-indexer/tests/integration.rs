@@ -2,12 +2,15 @@ use ffts_indexer::cli::OutputFormat;
 use ffts_indexer::db::{Database, PragmaConfig};
 use ffts_indexer::doctor::{Doctor, Severity};
 use ffts_indexer::error::IndexerError;
-use ffts_indexer::indexer::{Indexer, IndexerConfig, atomic_reindex};
+#[cfg(unix)]
+use ffts_indexer::indexer::atomic_reindex;
+use ffts_indexer::indexer::{Indexer, IndexerConfig};
 use ffts_indexer::init::{GitignoreResult, check_gitignore, gitignore_entries, update_gitignore};
 use ffts_indexer::search::{SearchConfig, Searcher};
 use ffts_indexer::{DB_NAME, DB_SHM_NAME, DB_TMP_GLOB, DB_WAL_NAME, DB_WAL_SUFFIX};
 use rusqlite::ErrorCode;
 use std::fs;
+use std::path::Path;
 use std::thread;
 use tempfile::tempdir;
 
@@ -18,6 +21,35 @@ fn create_test_indexer(dir: &tempfile::TempDir) -> Indexer {
     db.init_schema().unwrap();
     let config = IndexerConfig::default();
     Indexer::new(dir.path(), db, config)
+}
+
+fn try_create_symlink_file(src: &Path, dst: &Path) -> bool {
+    #[cfg(unix)]
+    {
+        match std::os::unix::fs::symlink(src, dst) {
+            Ok(()) => true,
+            Err(err) => {
+                eprintln!("Skipping symlink test: failed to create unix symlink: {err}");
+                false
+            }
+        }
+    }
+    #[cfg(windows)]
+    {
+        match std::os::windows::fs::symlink_file(src, dst) {
+            Ok(()) => true,
+            Err(err) => {
+                eprintln!("Skipping symlink test: failed to create windows symlink: {err}");
+                false
+            }
+        }
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = (src, dst);
+        eprintln!("Skipping symlink test: platform does not support symlink files");
+        false
+    }
 }
 
 #[test]
@@ -361,10 +393,7 @@ fn test_symlink_path_traversal_attack_rejected() {
 
     // Create a symlink inside the project pointing to the outside file
     let symlink = dir.path().join("escape_link");
-    if cfg!(unix) {
-        std::os::unix::fs::symlink(&outside_file, &symlink).unwrap();
-    } else {
-        // Skip test on non-Unix systems where symlinks may not work the same way
+    if !try_create_symlink_file(&outside_file, &symlink) {
         return;
     }
 

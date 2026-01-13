@@ -17,6 +17,7 @@ use std::os::windows::ffi::OsStrExt;
 use std::path::Path;
 
 use crate::error::Result;
+use crate::fs_utils::sync_parent_dir;
 use crate::{DB_NAME, DB_SHM_NAME, DB_TMP_GLOB, DB_WAL_NAME};
 
 /// Required gitignore entries for ffts-grep.
@@ -160,11 +161,15 @@ pub fn update_gitignore(project_dir: &Path) -> Result<GitignoreResult> {
     let mut file = fs::File::create(&tmp_path)?;
     file.write_all(new_content.as_bytes())?;
     file.flush()?;
+    file.sync_all()?;
 
     drop(file); // Ensure file is closed before rename
 
     // Atomic rename (Windows requires replace strategy)
     atomic_replace(&tmp_path, &gitignore_path)?;
+
+    // Ensure the rename is durable on filesystems that require directory fsync.
+    sync_parent_dir(&gitignore_path)?;
 
     let count = missing.len();
     if file_existed {

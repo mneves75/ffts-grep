@@ -48,6 +48,7 @@ use std::path::{Path, PathBuf};
 use crate::constants::EXPECTED_APPLICATION_ID;
 use crate::db::{Database, PragmaConfig};
 use crate::error::Result;
+use crate::fs_utils::{sync_file, sync_parent_dir};
 use crate::indexer::{IndexStats, Indexer, IndexerConfig};
 use crate::{DB_NAME, DB_TMP_SUFFIX, init};
 
@@ -438,18 +439,26 @@ pub fn auto_init_with_config(
             // Another process already created the database - use theirs
             cleanup_temp();
             tracing::debug!("Database already exists, using existing");
-        } else if let Err(e) = fs::rename(&tmp_path, &db_path) {
-            // Rename failed (Windows: target appeared between check and rename)
-            cleanup_temp();
-            tracing::debug!(error = %e, "Rename failed, using existing database");
         } else {
-            // Rename succeeded - only clean up WAL files (main file was renamed)
-            let _ = fs::remove_file(
-                project_dir.join(format!("{DB_NAME}{DB_TMP_SUFFIX}.{unique_suffix}-shm")),
-            );
-            let _ = fs::remove_file(
-                project_dir.join(format!("{DB_NAME}{DB_TMP_SUFFIX}.{unique_suffix}-wal")),
-            );
+            if let Err(err) = sync_file(&tmp_path) {
+                cleanup_temp();
+                return Err(crate::error::IndexerError::Io { source: err });
+            }
+            if let Err(e) = fs::rename(&tmp_path, &db_path) {
+                // Rename failed (Windows: target appeared between check and rename)
+                cleanup_temp();
+                tracing::debug!(error = %e, "Rename failed, using existing database");
+            } else {
+                // Rename succeeded - only clean up WAL files (main file was renamed)
+                let _ = fs::remove_file(
+                    project_dir.join(format!("{DB_NAME}{DB_TMP_SUFFIX}.{unique_suffix}-shm")),
+                );
+                let _ = fs::remove_file(
+                    project_dir.join(format!("{DB_NAME}{DB_TMP_SUFFIX}.{unique_suffix}-wal")),
+                );
+                sync_parent_dir(&db_path)
+                    .map_err(|e| crate::error::IndexerError::Io { source: e })?;
+            }
         }
     }
 
@@ -503,8 +512,13 @@ pub fn backup_and_reinit_with_config(
     if let Err(e) = fs::rename(&db_path, &backup_path) {
         tracing::warn!(error = %e, "Backup failed, removing corrupted database");
         let _ = fs::remove_file(&db_path);
-    } else if !quiet {
-        tracing::info!(path = %backup_path.display(), "Created backup of corrupted database");
+    } else {
+        if !quiet {
+            tracing::info!(path = %backup_path.display(), "Created backup of corrupted database");
+        }
+        if let Err(e) = sync_parent_dir(&backup_path) {
+            tracing::warn!(error = %e, "Failed to sync backup directory");
+        }
     }
 
     // Clean up WAL/SHM files from corrupted database
