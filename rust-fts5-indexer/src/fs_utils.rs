@@ -21,12 +21,11 @@ pub(crate) fn sync_parent_dir(path: &Path) -> io::Result<()> {
     #[cfg(windows)]
     {
         use std::os::windows::ffi::OsStrExt;
-        use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
+        use windows_sys::Win32::Foundation::{CloseHandle, GENERIC_WRITE, INVALID_HANDLE_VALUE};
         use windows_sys::Win32::Storage::FileSystem::{
             CreateFileW, FILE_FLAG_BACKUP_SEMANTICS, FILE_SHARE_DELETE, FILE_SHARE_READ,
             FILE_SHARE_WRITE, FlushFileBuffers, OPEN_EXISTING,
         };
-        use windows_sys::Win32::System::SystemServices::GENERIC_WRITE;
 
         let mut wide: Vec<u16> = parent.as_os_str().encode_wide().collect();
         wide.push(0);
