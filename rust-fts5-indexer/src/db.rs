@@ -404,11 +404,11 @@ impl Database {
         // BM25 weights: filename=100, path=50, content=1
         // Column order in FTS5: filename, path, content
         let sql = if paths_only {
-            "SELECT path, bm25(files_fts, 100.0, 50.0, 1.0) FROM files_fts
-             WHERE path MATCH ?1 ORDER BY bm25(files_fts, 100.0, 50.0, 1.0) LIMIT ?2"
+            "SELECT path, bm25(files_fts, 100.0, 50.0, 1.0) AS rank FROM files_fts
+             WHERE path MATCH ?1 ORDER BY rank LIMIT ?2"
         } else {
-            "SELECT path, bm25(files_fts, 100.0, 50.0, 1.0) FROM files_fts
-             WHERE files_fts MATCH ?1 ORDER BY bm25(files_fts, 100.0, 50.0, 1.0) LIMIT ?2"
+            "SELECT path, bm25(files_fts, 100.0, 50.0, 1.0) AS rank FROM files_fts
+             WHERE files_fts MATCH ?1 ORDER BY rank LIMIT ?2"
         };
 
         let mut stmt =
@@ -468,8 +468,8 @@ impl Database {
         let sql = "SELECT path FROM files
                    WHERE filename LIKE '%' || ?1 || '%' ESCAPE '\\' COLLATE NOCASE
                    ORDER BY
-                       CASE WHEN LOWER(filename) = LOWER(?2) THEN 0
-                            WHEN LOWER(filename) LIKE LOWER(?1) || '%' ESCAPE '\\' THEN 1
+                       CASE WHEN filename = ?2 COLLATE NOCASE THEN 0
+                            WHEN filename LIKE ?1 || '%' ESCAPE '\\' COLLATE NOCASE THEN 1
                             ELSE 2 END,
                        length(filename)
                    LIMIT ?3";
@@ -539,9 +539,15 @@ impl Database {
         drop(stmt);
 
         let tx = self.conn.transaction().map_err(|e| IndexerError::Database { source: e })?;
-        for rel_path in &missing {
-            tx.execute("DELETE FROM files WHERE path = ?", [rel_path])
+        {
+            let mut delete_stmt = tx
+                .prepare("DELETE FROM files WHERE path = ?")
                 .map_err(|e| IndexerError::Database { source: e })?;
+            for rel_path in &missing {
+                delete_stmt
+                    .execute([rel_path])
+                    .map_err(|e| IndexerError::Database { source: e })?;
+            }
         }
         tx.commit().map_err(|e| IndexerError::Database { source: e })?;
 

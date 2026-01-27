@@ -6,7 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Fast full-text search file indexer using SQLite FTS5. Provides ~10ms queries on 10K file codebases. Uses BM25 ranking for relevant search results.
 
-**Version**: 0.11 | **Rust**: 1.85+ (see `rust-fts5-indexer/Cargo.toml`)
+**Version**: 0.11.2 | **Rust**: 1.85+ (see `rust-fts5-indexer/Cargo.toml`)
+**Session notes**: `agent-notes.md`
 
 ## Build Commands
 
@@ -62,14 +63,18 @@ The tool respects `CLAUDE_PROJECT_DIR` env var for project root detection.
 
 ```
 rust-fts5-indexer/src/
-├── main.rs            # Entry point, CLI dispatch
+├── main.rs            # Entry point, CLI dispatch, stdin JSON protocol
 ├── lib.rs             # Library exports, DB constants
 ├── cli.rs             # Argument parsing (clap subcommands)
 ├── db.rs              # SQLite FTS5 layer, triggers, BM25 ranking, PRAGMA config
 ├── indexer.rs         # Directory walker, UTF-8 validation, batch upserts, gitignore
 ├── search.rs          # Query execution, result formatting
 ├── doctor.rs          # Diagnostic checks (10 checks)
-└── init.rs            # Gitignore updates, project initialization
+├── init.rs            # Gitignore updates, project initialization
+├── error.rs           # Error types (IndexerError), exit codes
+├── constants.rs       # Application ID, magic numbers
+├── fs_utils.rs        # Platform-aware fsync, file operations
+└── health.rs          # Auto-init, project root detection, database health checks
 ```
 
 ### Data Flow
@@ -143,11 +148,35 @@ Heavily optimized release builds:
 |--------|-------------|
 | `--quiet`, `-q` | Suppress status messages (for CI/scripting) |
 | `--project-dir=<path>` | Override project directory |
+| `--follow-symlinks` | Follow symbolic links during indexing (default: false) |
 | `--pragma-cache-size=<n>` | SQLite cache size in KB (default: -32000 = 32MB) |
 | `--pragma-mmap-size=<n>` | Memory-mapped I/O size (platform-aware default) |
 | `--pragma-page-size=<n>` | Database page size (default: 4096) |
 | `--pragma-busy-timeout=<n>` | Concurrent access timeout in ms (default: 5000) |
 | `--pragma-synchronous=<mode>` | Synchronous mode: OFF, NORMAL, FULL, EXTRA (default: NORMAL) |
+
+## Bash Guidelines
+
+**IMPORTANT: Avoid commands that cause output buffering issues**
+
+- DO NOT pipe output through `head`, `tail`, `less`, or `more` when monitoring command output
+- DO NOT use `| head -n X` or `| tail -n X` to truncate output - these cause buffering problems
+- Let commands complete fully, or use command-specific flags if available
+- For log monitoring, prefer reading files directly rather than piping through filters
+
+**When checking command output:**
+```bash
+# GOOD: Use command-specific flags
+git log -n 10                    # Not: git log | head -10
+cargo test -- --test-threads=1  # Not: cargo test | head -50
+
+# GOOD: Let commands complete
+cargo build 2>&1                 # Full output, no pipes
+
+# BAD: Causes buffering issues
+cargo build | head -20           # May hang indefinitely
+git log | tail -5                # Unpredictable behavior
+```
 
 ## Development Guidelines
 
