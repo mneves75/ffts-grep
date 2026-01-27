@@ -101,6 +101,7 @@ fn create_test_indexer(dir: &tempfile::TempDir) -> Indexer {
 | Security | `test_symlink_path_traversal_attack_rejected` |
 | Performance | `test_transaction_batching_performance` |
 | Error handling | `test_fts5_query_error_handling`, `test_permission_denied_handling` |
+| CLI refresh behavior | `tests/refresh_behavior.rs` (refresh validation and auto-init coverage) |
 
 ---
 
