@@ -572,3 +572,9 @@
 - Decision: Make whitespace handling explicit in tutorial
 - Commands: apply_patch (docs/learn/06-main_rs.md, progress.md)
 - Open questions: None
+2026-01-27 20:44:10 -0300
+- Step: Update testing chapter for refresh coverage
+- Result: Added refresh_behavior.rs mention in test category table
+- Decision: Keep testing docs aligned with new regression suite
+- Commands: apply_patch (docs/learn/13-testing.md, progress.md)
+- Open questions: None

@@ -75,3 +75,7 @@
 ## Iteration 13: main.rs Helper Doc
 
 - [x] Document query_is_empty helper in main.rs tutorial
+
+## Iteration 14: Testing Docs Refresh Coverage
+
+- [x] Note refresh behavior tests in testing chapter
