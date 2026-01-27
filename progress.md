@@ -71,3 +71,7 @@
 ## Iteration 12: Changelog Accuracy
 
 - [x] Record implicit whitespace query fix in changelog
+
+## Iteration 13: main.rs Helper Doc
+
+- [x] Document query_is_empty helper in main.rs tutorial

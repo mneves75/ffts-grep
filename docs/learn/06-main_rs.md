@@ -189,6 +189,14 @@ fn main() -> std::process::ExitCode {
 }
 ```
 
+Helper used by main to treat whitespace-only input as empty:
+
+```rust
+fn query_is_empty(parts: &[String]) -> bool {
+    parts.iter().all(|part| part.trim().is_empty())
+}
+```
+
 ### Key Observations
 
 1. **Parse first** — Get user input before doing anything
