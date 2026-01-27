@@ -279,6 +279,7 @@ Optional refresh (force reindex before searching):
 ```json
 {"query": "src/comp", "refresh": true}
 ```
+Note: refresh requires a non-empty query; empty or whitespace-only queries return exit code 2.
 
 ### Features
 
