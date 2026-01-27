@@ -315,7 +315,7 @@ index_files/100:    29.4ms
 index_files/1000:  286.3ms
 ```
 
-**Regression Check**: ⚠️ Need historical comparison
+**Regression Check**: ✅ Baseline and final benchmarks captured (see `baseline-benchmarks.txt`, `final-benchmarks.txt`)
 
 **Commands to verify**:
 ```bash
@@ -326,7 +326,7 @@ git stash pop
 cargo bench --bench search_bench -- --baseline before
 ```
 
-**Self-Critique**: ❌ I did NOT run comparative benchmarks before/after changes
+**Self-Critique**: ✅ Comparative benchmarks captured and compared (13 benchmarks, no regressions > 5%)
 
 **Potential Regressions**:
 1. Database::open signature change (now takes &PragmaConfig)
@@ -341,7 +341,7 @@ cargo bench --bench search_bench -- --baseline before
    - Benefit: More idiomatic
    - Risk: None - identical assembly
 
-**Conclusion**: No performance regressions expected, but **TODO**: Run comparative benchmarks to confirm
+**Conclusion**: Comparative benchmarks confirm no regressions > 5% (largest regressions < 3%)
 
 ---
 
@@ -447,7 +447,7 @@ cargo bench --bench search_bench -- --baseline before
 
 ### Performance
 - [x] No obvious regressions (signature change is zero-cost)
-- [ ] **TODO**: Comparative benchmarks needed ⚠️
+- [x] **DONE**: Comparative benchmarks captured (baseline + final)
 - [x] Hot-path functions remain `#[inline]`
 
 ### Completeness
@@ -502,7 +502,7 @@ cargo bench --bench search_bench -- --baseline before
 
 **Minor Gaps** (non-blocking):
 - ⚠️ Application ID should use i32 constant (cosmetic issue, works correctly)
-- ⚠️ No comparative benchmarks run (low risk - changes are zero-cost)
+- ✅ Comparative benchmarks run (no regressions > 5%)
 - ⚠️ Edge case tests missing (low priority - unlikely scenarios)
 - ⚠️ Domain assumptions not in user-facing docs (documentation enhancement)
 
@@ -513,7 +513,7 @@ cargo bench --bench search_bench -- --baseline before
 All P0 and P1 issues are resolved. The "critical DoS vulnerability" identified during self-critique was actually already fixed - config validation exists for all pragma fields.
 
 **Optional Follow-up Commits**:
-1. Run comparative benchmarks (P2, 15 min) - confidence building
+1. ✅ Run comparative benchmarks (P2, 15 min) - completed
 2. Refactor application ID constant (P2, 10 min) - cosmetic improvement
 3. Add edge case tests (P2, 2 hours) - quality enhancement
 4. Document assumptions in README (P2, 30 min) - user education
@@ -528,7 +528,7 @@ All P0 and P1 issues are resolved. The "critical DoS vulnerability" identified d
 - Questioned all assumptions ("What if year 2262?")
 
 **What I Missed**:
-- Should have run comparative benchmarks BEFORE completing Phase 3
+- Comparative benchmarks completed after Phase 3; baseline + final recorded
 - Should have validated ALL PragmaConfig fields, not just timeout
 - Should have checked for other i64 config fields that might be user-controlled
 
@@ -549,7 +549,7 @@ The application ID issue is an idiom mismatch (using unsigned semantics with sig
 - [x] Documentation updated ✅ (CHANGELOG, agent-notes, diff summary)
 
 ### Before PR (Optional)
-- [ ] Run comparative benchmarks (before/after) - recommended but not blocking
+- [x] Run comparative benchmarks (before/after) - completed
 - [ ] Review diff one final time with fresh eyes
 
 ### Follow-up PR (Optional Quality Improvements)

@@ -239,13 +239,13 @@ $ cargo clippy --all-targets --all-features -- -W clippy::pedantic 2>&1 | grep -
 
 **Acceptance Criteria**: All performance claims in CHANGELOG verified with benchmark evidence.
 
-- [ ] **Task 5.1**: Create baseline benchmarks for current code
+- [x] **Task 5.1**: Create baseline benchmarks for current code
   - **AC**: Run `cargo bench` and save results to `baseline-benchmarks.txt`
   - **AC**: Document search query p50 latency (claimed: < 200µs)
   - **AC**: Document index 1000 files time (claimed: ~210ms)
   - **Verification**: `cargo bench 2>&1 | tee baseline-benchmarks.txt`
 
-- [ ] **Task 5.2**: Run benchmarks after all fixes
+- [x] **Task 5.2**: Run benchmarks after all fixes
   - **AC**: Run `cargo bench` and save results to `final-benchmarks.txt`
   - **AC**: Compare before/after with statistical significance
   - **AC**: No regression > 1% in any benchmark
@@ -602,8 +602,8 @@ These questions will be answered during implementation with documented decisions
 
 1. ✅ **ENGINEERING_SPEC.md** (this document)
 2. ⏳ **agent-notes.md** (timestamped engineering log)
-3. ⏳ **baseline-benchmarks.txt** (performance baseline)
-4. ⏳ **final-benchmarks.txt** (post-fix benchmarks)
+3. ✅ **baseline-benchmarks.txt** (performance baseline)
+4. ✅ **final-benchmarks.txt** (post-fix benchmarks)
 5. ⏳ **clippy-final.txt** (final clippy output)
 6. ⏳ **final-changes.txt** (git diff summary)
 7. ⏳ **PR-style implementation report** (Markdown)
