@@ -470,3 +470,9 @@
 - Decision: Keep docs accurate with latest search behavior
 - Commands: apply_patch (docs/learn/11-doctor_rs.md, docs/learn/14-exercises-solutions.md, docs/learn/README.md, docs/state-machines/README.md, docs/state-machines/04-search-flow.md)
 - Open questions: None
+2026-01-27 20:01:10 -0300
+- Step: Sync CLI dispatch state machine with refresh and exit codes
+- Result: Updated docs/state-machines/01-cli-dispatch.md with refresh validation and current ExitCode mapping
+- Decision: Keep diagrams aligned with main.rs logic and exit codes
+- Commands: apply_patch (docs/state-machines/01-cli-dispatch.md)
+- Open questions: None
