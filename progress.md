@@ -43,3 +43,8 @@
 
 - [x] Document refresh query requirement in README
 - [x] Record validation fix in changelog
+
+## Iteration 7: Refresh Help Text Alignment
+
+- [x] Update CLI help string to mention non-empty query requirement
+- [x] Sync docs/learn help snippets with updated wording
