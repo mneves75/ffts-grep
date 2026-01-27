@@ -37,8 +37,8 @@ stateDiagram-v2
         CheckCommand --> Search: Commands::Search
         CheckCommand --> CheckQuery: None
 
-        CheckQuery --> ImplicitSearch: cli.query_string().is_some()
-        CheckQuery --> CheckStdin: query empty
+        CheckQuery --> ImplicitSearch: non-empty query
+        CheckQuery --> CheckStdin: query empty/whitespace
 
         CheckStdin --> ParseStdinJson: !stdin.is_terminal()
         CheckStdin --> ExitDataErr: refresh set + stdin terminal
@@ -52,8 +52,8 @@ stateDiagram-v2
     Doctor --> Exit
     Init --> Exit
     Index --> Exit
-        Search --> ExitDataErr: refresh set + empty/whitespace query
-        Search --> Exit
+    Search --> ExitDataErr: refresh set + empty/whitespace query
+    Search --> Exit
     ImplicitSearch --> Exit
     StdinSearch --> Exit
     ExitOk --> Exit

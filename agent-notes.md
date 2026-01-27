@@ -542,3 +542,9 @@
 - Decision: Keep quick-reference docs consistent with behavior
 - Commands: apply_patch (README.md, CLAUDE.md, progress.md)
 - Open questions: None
+2026-01-27 20:33:45 -0300
+- Step: Align CLI dispatch state machine terminology
+- Result: Updated dispatch diagram to describe non-empty queries without referencing query_string helper
+- Decision: Keep docs reflecting behavior rather than internal helper names
+- Commands: apply_patch (docs/state-machines/01-cli-dispatch.md, progress.md)
+- Open questions: None

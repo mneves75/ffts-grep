@@ -57,3 +57,7 @@
 ## Iteration 9: Refresh Table Wording
 
 - [x] Update README and CLAUDE refresh flag tables to mention non-empty query requirement
+
+## Iteration 10: CLI Dispatch Doc Consistency
+
+- [x] Remove stale query_string reference in CLI dispatch state machine
