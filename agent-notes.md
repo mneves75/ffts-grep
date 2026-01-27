@@ -476,3 +476,9 @@
 - Decision: Keep diagrams aligned with main.rs logic and exit codes
 - Commands: apply_patch (docs/state-machines/01-cli-dispatch.md)
 - Open questions: None
+2026-01-27 20:03:00 -0300
+- Step: Correct exit code table in error tutorial
+- Result: Updated BSD sysexits mapping to match ExitCode values
+- Decision: Avoid misleading docs for scripting users
+- Commands: apply_patch (docs/learn/04-error_rs.md)
+- Open questions: None
