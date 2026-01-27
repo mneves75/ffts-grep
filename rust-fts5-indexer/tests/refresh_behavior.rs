@@ -92,6 +92,45 @@ fn test_refresh_rejects_whitespace_query_via_stdin() {
 }
 
 #[test]
+fn test_refresh_rejected_for_search_without_query() {
+    let dir = tempdir().unwrap();
+
+    Command::new(assert_cmd::cargo::cargo_bin!("ffts-grep"))
+        .args(["--project-dir", dir.path().to_str().unwrap(), "search", "--refresh"])
+        .assert()
+        .failure()
+        .code(2);
+}
+
+#[test]
+fn test_refresh_rejected_for_search_whitespace_query() {
+    let dir = tempdir().unwrap();
+
+    Command::new(assert_cmd::cargo::cargo_bin!("ffts-grep"))
+        .args([
+            "--project-dir",
+            dir.path().to_str().unwrap(),
+            "search",
+            "--refresh",
+            "   ",
+        ])
+        .assert()
+        .failure()
+        .code(2);
+}
+
+#[test]
+fn test_refresh_rejected_for_implicit_whitespace_query() {
+    let dir = tempdir().unwrap();
+
+    Command::new(assert_cmd::cargo::cargo_bin!("ffts-grep"))
+        .args(["--project-dir", dir.path().to_str().unwrap(), "--refresh", "   "])
+        .assert()
+        .failure()
+        .code(2);
+}
+
+#[test]
 fn test_refresh_requires_auto_init_when_missing() {
     let dir = tempdir().unwrap();
 

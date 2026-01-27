@@ -32,3 +32,9 @@
 - [x] Treat whitespace-only stdin query as empty
 - [x] Add regression coverage for whitespace refresh
 - [x] Re-run tests and clippy
+
+## Iteration 5: Refresh Query Validation Consistency
+
+- [x] Reject refresh when search/implicit queries are empty or whitespace
+- [x] Expand refresh regression suite for CLI search/implicit cases
+- [x] Re-run tests and clippy

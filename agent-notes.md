@@ -512,3 +512,9 @@
 - Decision: Align stdin behavior with CLI semantics to prevent silent refresh on blank queries
 - Commands: apply_patch (rust-fts5-indexer/src/main.rs, rust-fts5-indexer/tests/refresh_behavior.rs); cargo test; cargo clippy --all-targets -- -D warnings
 - Open questions: None
+2026-01-27 20:24:50 -0300
+- Step: Enforce refresh query requirement across search + implicit modes
+- Result: Added query_is_empty guard for CLI search/implicit; added refresh regression tests for empty/whitespace queries
+- Decision: Make refresh semantics consistent across stdin, implicit, and subcommand paths
+- Commands: apply_patch (rust-fts5-indexer/src/main.rs, rust-fts5-indexer/tests/refresh_behavior.rs, docs/state-machines/01-cli-dispatch.md); cargo test; cargo clippy --all-targets -- -D warnings
+- Open questions: None
