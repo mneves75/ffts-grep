@@ -359,6 +359,9 @@ Options:
       --follow-symlinks
           Follow symlinks while indexing (disabled by default for safety)
 
+      --refresh
+          Refresh index before search (search-only)
+
       --pragma-cache-size <PRAGMA_CACHE_SIZE>
           `SQLite` cache size in `KB` (negative) or `pages` (positive)
           

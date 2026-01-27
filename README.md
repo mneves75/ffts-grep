@@ -79,6 +79,7 @@ See `CONTRIBUTING.md` for toolchain and verification requirements.
 | `--quiet, -q` | Suppress status messages (for CI/scripting) |
 | `--project-dir <path>` | Project root directory (default: current directory) |
 | `--follow-symlinks` | Follow symlinks when indexing (default: disabled for safety) |
+| `--refresh` | Refresh index before search (search-only) |
 | `--help` | Show help information |
 | `--version` | Show version information |
 
@@ -133,6 +134,9 @@ ffts-grep search --format json "error handling"
 
 # Run performance benchmark
 ffts-grep search --benchmark "test query"
+
+# Refresh index before search (after creating files)
+ffts-grep search --refresh "refresh_token"
 ```
 
 ### Subcommand: doctor
@@ -269,6 +273,11 @@ When you type `@` in Claude Code to reference a file, Claude Code invokes your c
 │                 │                                   │                 │
 │   @ file picker │ ◀──────────────────────────────  │   FTS5 search   │
 └─────────────────┘      stdout: path\npath\n...      └─────────────────┘
+```
+
+Optional refresh (force reindex before searching):
+```json
+{"query": "src/comp", "refresh": true}
 ```
 
 ### Features

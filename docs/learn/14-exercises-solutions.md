@@ -59,6 +59,7 @@ Commands:
 Options:
   --project-dir <PATH>    Override project directory
   --quiet, -q             Suppress status messages
+  --refresh               Refresh index before search (search-only)
   --help                  Print help
   --version               Print version
 ```

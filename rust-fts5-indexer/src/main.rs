@@ -6,10 +6,12 @@ use clap::Parser;
 use serde::Deserialize;
 
 /// JSON input format for Claude Code file suggestion integration.
-/// Claude Code sends: {"query": "search term"}
+/// Claude Code sends: {"query": "search term", "refresh": true}
 #[derive(Deserialize)]
 struct StdinQuery {
     query: String,
+    #[serde(default)]
+    refresh: bool,
 }
 use ffts_indexer::{
     DB_NAME, DB_SHM_SUFFIX, DB_WAL_SUFFIX,
@@ -18,7 +20,7 @@ use ffts_indexer::{
     doctor::Doctor,
     error::{ExitCode, IndexerError},
     health::{self, DatabaseHealth},
-    indexer::{Indexer, IndexerConfig, atomic_reindex_with_config},
+    indexer::{IndexStats, Indexer, IndexerConfig, atomic_reindex_with_config},
     init::{self, InitResult},
     search::{SearchConfig, Searcher},
 };
@@ -85,6 +87,16 @@ fn main() -> std::process::ExitCode {
     let indexer_config =
         || IndexerConfig { follow_symlinks: cli.follow_symlinks, ..Default::default() };
 
+    if cli.refresh
+        && matches!(
+            cli.command,
+            Some(Commands::Index { .. } | Commands::Doctor { .. } | Commands::Init { .. })
+        )
+    {
+        tracing::error!("--refresh is only valid for search operations");
+        return ExitCode::DataErr.into();
+    }
+
     // Handle subcommands
     match &cli.command {
         Some(Commands::Doctor { verbose, json }) => {
@@ -113,6 +125,9 @@ fn main() -> std::process::ExitCode {
         Some(Commands::Search { query, paths, format, benchmark, no_auto_init }) => {
             // Run benchmark mode if requested
             if *benchmark {
+                if cli.refresh {
+                    tracing::warn!("--refresh ignored in benchmark mode");
+                }
                 return run_benchmark(&project_dir, &pragma_config, cli.quiet);
             }
 
@@ -126,6 +141,7 @@ fn main() -> std::process::ExitCode {
                 search_query,
                 *paths,
                 output_format,
+                cli.refresh,
                 *no_auto_init,
                 cli.quiet,
             );
@@ -140,6 +156,7 @@ fn main() -> std::process::ExitCode {
                     &cli.query,
                     false,
                     OutputFormat::Plain,
+                    cli.refresh,
                     false, // auto-init enabled for implicit search
                     cli.quiet,
                 );
@@ -155,6 +172,7 @@ fn main() -> std::process::ExitCode {
                         if !input.query.is_empty() {
                             let query_parts: Vec<String> =
                                 input.query.split_whitespace().map(String::from).collect();
+                            let refresh = cli.refresh || input.refresh;
                             return run_search(
                                 &project_dir,
                                 &pragma_config,
@@ -162,12 +180,16 @@ fn main() -> std::process::ExitCode {
                                 &query_parts,
                                 false,
                                 OutputFormat::Plain,
+                                refresh,
                                 false, // auto-init enabled for stdin search
                                 cli.quiet,
                             );
                         }
                     }
                 }
+            } else if cli.refresh {
+                tracing::error!("--refresh requires a search query or stdin JSON");
+                return ExitCode::DataErr.into();
             }
         }
     }
@@ -213,48 +235,46 @@ fn run_indexing(
         }
     } else {
         // Incremental index
-        let db = match Database::open(&db_path, config) {
-            Ok(db) => db,
-            Err(e) => {
-                tracing::error!(
-                    error = %e,
-                    db_path = %db_path.display(),
-                    "Failed to open database"
-                );
-                return ExitCode::IoErr.into(); // IOERR
-            }
-        };
-
-        if let Err(e) = db.init_schema() {
-            tracing::error!(
-                error = %e,
-                "Failed to initialize schema"
-            );
-            return ExitCode::Software.into(); // SOFTWARE
-        }
-
-        let mut indexer = Indexer::new(project_dir, db, indexer_config);
-
-        match indexer.index_directory() {
+        match index_incremental(project_dir, &db_path, config, indexer_config) {
             Ok(stats) => {
-                tracing::info!(
-                    files = stats.files_indexed,
-                    bytes = stats.bytes_indexed,
-                    duration_secs = %format!("{:.2}", stats.duration.as_secs_f64()),
-                    "Indexing complete"
-                );
+                log_index_stats(&stats, "Indexing complete");
             }
             Err(e) => {
-                tracing::error!(
-                    error = %e,
-                    "Indexing failed"
-                );
-                return ExitCode::Software.into(); // SOFTWARE
+                tracing::error!(error = %e, "Indexing failed");
+                return map_index_error(e);
             }
         }
     }
 
     ExitCode::Ok.into() // OK
+}
+
+fn index_incremental(
+    project_dir: &Path,
+    db_path: &Path,
+    config: &PragmaConfig,
+    indexer_config: IndexerConfig,
+) -> std::result::Result<IndexStats, IndexerError> {
+    let db = Database::open(db_path, config)?;
+    db.init_schema()?;
+    let mut indexer = Indexer::new(project_dir, db, indexer_config);
+    indexer.index_directory()
+}
+
+fn log_index_stats(stats: &IndexStats, message: &str) {
+    tracing::info!(
+        files = stats.files_indexed,
+        bytes = stats.bytes_indexed,
+        duration_secs = %format!("{:.2}", stats.duration.as_secs_f64()),
+        "{message}"
+    );
+}
+
+fn map_index_error(error: IndexerError) -> std::process::ExitCode {
+    match error {
+        IndexerError::Io { .. } => ExitCode::IoErr.into(),
+        _ => ExitCode::Software.into(),
+    }
 }
 
 /// Run benchmark mode.
@@ -346,11 +366,13 @@ fn run_search(
     query: &[String],
     paths_only: bool,
     format: OutputFormat,
+    refresh: bool,
     no_auto_init: bool,
     quiet: bool,
 ) -> std::process::ExitCode {
     let db_path = project_dir.join(DB_NAME);
     let query_str = query.join(" ");
+    let mut already_indexed = false;
 
     // Check health and handle auto-init BEFORE opening database
     let health = health::check_health_fast(project_dir);
@@ -369,21 +391,26 @@ fn run_search(
                 );
             }
             if let Err(e) =
-                health::auto_init_with_config(project_dir, config, indexer_config, quiet)
+                health::auto_init_with_config(project_dir, config, indexer_config.clone(), quiet)
             {
                 tracing::error!(error = %e, "Auto-init failed");
                 return ExitCode::Software.into();
             }
+            already_indexed = true;
         }
 
         DatabaseHealth::SchemaInvalid | DatabaseHealth::Corrupted if !no_auto_init => {
             tracing::warn!(health = ?health, "Database corrupted, reinitializing");
-            if let Err(e) =
-                health::backup_and_reinit_with_config(project_dir, config, indexer_config, quiet)
-            {
+            if let Err(e) = health::backup_and_reinit_with_config(
+                project_dir,
+                config,
+                indexer_config.clone(),
+                quiet,
+            ) {
                 tracing::error!(error = %e, "Reinit failed");
                 return ExitCode::Software.into();
             }
+            already_indexed = true;
         }
 
         DatabaseHealth::Missing | DatabaseHealth::Empty => {
@@ -416,6 +443,19 @@ fn run_search(
         _ => {
             tracing::error!("Unknown database health state");
             return ExitCode::Software.into();
+        }
+    }
+
+    if refresh && !already_indexed {
+        if !quiet {
+            tracing::info!("Refreshing index before search");
+        }
+        match index_incremental(project_dir, &db_path, config, indexer_config) {
+            Ok(stats) => log_index_stats(&stats, "Index refresh complete"),
+            Err(e) => {
+                tracing::error!(error = %e, "Index refresh failed");
+                return map_index_error(e);
+            }
         }
     }
 
