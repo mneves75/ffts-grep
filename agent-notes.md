@@ -494,3 +494,9 @@
 - Decision: Keep structure overview accurate for readers
 - Commands: wc -l rust-fts5-indexer/src/*.rs; apply_patch (docs/learn/README.md)
 - Open questions: None
+2026-01-27 20:07:40 -0300
+- Step: Fix init flow exit codes in state machine doc
+- Result: Updated docs/state-machines/06-init-flow.md to match ExitCode enum values
+- Decision: Keep exit code references consistent across docs
+- Commands: apply_patch (docs/state-machines/06-init-flow.md)
+- Open questions: None
