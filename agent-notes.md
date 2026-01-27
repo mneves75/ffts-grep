@@ -560,3 +560,9 @@
 - Decision: Keep lint checks consistent for code changes
 - Commands: cargo clippy --all-targets -- -D warnings
 - Open questions: None
+2026-01-27 20:41:55 -0300
+- Step: Update changelog for implicit query behavior
+- Result: Added fix note for whitespace-only implicit query handling
+- Decision: Track user-visible CLI behavior changes in Unreleased
+- Commands: apply_patch (CHANGELOG.md, progress.md)
+- Open questions: None

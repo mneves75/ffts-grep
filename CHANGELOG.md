@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Refresh validation**: Reject empty or whitespace-only queries across CLI and stdin refresh modes
+- **Implicit query parsing**: Ignore whitespace-only query tokens when deriving implicit searches
 
 ## [0.11.2] - 2026-01-27
 
