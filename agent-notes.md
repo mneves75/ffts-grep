@@ -458,3 +458,9 @@
 - Decision: Ensure refresh does not bypass no_auto_init on missing DB
 - Commands: cat >> rust-fts5-indexer/tests/refresh_behavior.rs; cargo fmt; cargo clippy --all-targets -- -D warnings; cargo test
 - Open questions: None
+2026-01-27 19:56:35 -0300
+- Step: Align docs/learn CLI examples with current flags
+- Result: Updated help snippet version and corrected --paths-only to --paths; added --refresh example
+- Decision: Keep tutorial outputs consistent with actual CLI behavior
+- Commands: apply_patch (docs/learn/05-cli_rs.md, docs/learn/14-exercises-solutions.md, docs/learn/09-search_rs.md)
+- Open questions: None
