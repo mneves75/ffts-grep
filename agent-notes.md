@@ -416,3 +416,9 @@
 - Decision: Keep behavior stable while reducing allocations and redundant SQL work
 - Commands: apply_patch (search.rs, db.rs); cargo fmt; cargo clippy --all-targets -- -D warnings; cargo test
 - Open questions: None
+2026-01-27 19:35:20 -0300
+- Step: Commit and release tag
+- Result: Commit "release: prepare 0.11.2" pushed; tag v0.11.2 created and pushed
+- Decision: Release artifacts aligned with changelog and README version
+- Commands: git add ...; git commit -m "release: prepare 0.11.2"; git tag v0.11.2; git push; git push origin v0.11.2
+- Open questions: None
