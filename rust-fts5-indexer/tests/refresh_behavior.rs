@@ -78,3 +78,21 @@ fn test_refresh_via_stdin_json() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.lines().any(|line| line.ends_with("stdin.txt")));
 }
+
+#[test]
+fn test_refresh_requires_auto_init_when_missing() {
+    let dir = tempdir().unwrap();
+
+    Command::new(assert_cmd::cargo::cargo_bin!("ffts-grep"))
+        .args([
+            "--project-dir",
+            dir.path().to_str().unwrap(),
+            "search",
+            "--refresh",
+            "--no-auto-init",
+            "missing_token",
+        ])
+        .assert()
+        .failure()
+        .code(2);
+}
