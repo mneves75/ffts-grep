@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Explicit refresh**: `--refresh` flag for search and stdin protocol to reindex before searching
 
 ### Fixed
-- Nothing yet.
+- **Refresh validation**: Reject empty or whitespace-only queries across CLI and stdin refresh modes
 
 ## [0.11.2] - 2026-01-27
 

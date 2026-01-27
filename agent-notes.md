@@ -518,3 +518,9 @@
 - Decision: Make refresh semantics consistent across stdin, implicit, and subcommand paths
 - Commands: apply_patch (rust-fts5-indexer/src/main.rs, rust-fts5-indexer/tests/refresh_behavior.rs, docs/state-machines/01-cli-dispatch.md); cargo test; cargo clippy --all-targets -- -D warnings
 - Open questions: None
+2026-01-27 20:26:05 -0300
+- Step: Document refresh query requirement
+- Result: Added changelog entry and README note about empty/whitespace refresh rejection
+- Decision: Make user-facing behavior explicit for CLI and stdin integrations
+- Commands: apply_patch (CHANGELOG.md, README.md, progress.md)
+- Open questions: None

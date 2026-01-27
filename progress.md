@@ -38,3 +38,8 @@
 - [x] Reject refresh when search/implicit queries are empty or whitespace
 - [x] Expand refresh regression suite for CLI search/implicit cases
 - [x] Re-run tests and clippy
+
+## Iteration 6: Refresh Docs & Changelog
+
+- [x] Document refresh query requirement in README
+- [x] Record validation fix in changelog
