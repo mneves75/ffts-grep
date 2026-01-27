@@ -169,7 +169,12 @@ fn main() -> std::process::ExitCode {
             if !stdin.is_terminal() {
                 if let Some(Ok(line)) = stdin.lock().lines().next() {
                     if let Ok(input) = serde_json::from_str::<StdinQuery>(&line) {
-                        if !input.query.is_empty() {
+                        if input.query.is_empty() {
+                            if cli.refresh || input.refresh {
+                                tracing::error!("--refresh requires a search query or stdin JSON");
+                                return ExitCode::DataErr.into();
+                            }
+                        } else {
                             let query_parts: Vec<String> =
                                 input.query.split_whitespace().map(String::from).collect();
                             let refresh = cli.refresh || input.refresh;
@@ -187,7 +192,9 @@ fn main() -> std::process::ExitCode {
                         }
                     }
                 }
-            } else if cli.refresh {
+            }
+
+            if cli.refresh {
                 tracing::error!("--refresh requires a search query or stdin JSON");
                 return ExitCode::DataErr.into();
             }
