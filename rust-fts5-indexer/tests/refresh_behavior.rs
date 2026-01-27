@@ -47,3 +47,34 @@ fn test_refresh_flag_rejected_for_index() {
         .failure()
         .code(2);
 }
+
+#[test]
+fn test_refresh_via_stdin_json() {
+    let dir = tempdir().unwrap();
+    fs::write(dir.path().join("seed.txt"), "seed").unwrap();
+
+    Command::new(assert_cmd::cargo::cargo_bin!("ffts-grep"))
+        .args(["--project-dir", dir.path().to_str().unwrap(), "index"])
+        .assert()
+        .success();
+
+    fs::write(dir.path().join("stdin.txt"), "stdin_token").unwrap();
+
+    let output = Command::new(assert_cmd::cargo::cargo_bin!("ffts-grep"))
+        .args(["--project-dir", dir.path().to_str().unwrap()])
+        .write_stdin("{\"query\":\"stdin_token\"}\n")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.trim().is_empty());
+
+    let output = Command::new(assert_cmd::cargo::cargo_bin!("ffts-grep"))
+        .args(["--project-dir", dir.path().to_str().unwrap()])
+        .write_stdin("{\"query\":\"stdin_token\",\"refresh\":true}\n")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.lines().any(|line| line.ends_with("stdin.txt")));
+}
