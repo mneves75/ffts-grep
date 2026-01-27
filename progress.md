@@ -48,3 +48,8 @@
 
 - [x] Update CLI help string to mention non-empty query requirement
 - [x] Sync docs/learn help snippets with updated wording
+
+## Iteration 8: Main.rs Documentation Sync
+
+- [x] Update main.rs walkthrough to match refresh/query validation flow
+- [x] Refresh indexing/search snippets to reflect current implementation

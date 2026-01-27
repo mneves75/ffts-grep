@@ -530,3 +530,9 @@
 - Decision: Make help output reflect behavior without relying on README
 - Commands: apply_patch (rust-fts5-indexer/src/cli.rs, docs/learn/05-cli_rs.md, docs/learn/14-exercises-solutions.md, progress.md)
 - Open questions: None
+2026-01-27 20:30:10 -0300
+- Step: Sync main.rs tutorial with current code
+- Result: Updated Chapter 6 snippets and explanations for refresh validation, incremental indexing flow, and stdin JSON handling
+- Decision: Keep docs aligned with current control flow and error paths
+- Commands: apply_patch (docs/learn/06-main_rs.md, progress.md)
+- Open questions: None

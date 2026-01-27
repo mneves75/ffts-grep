@@ -24,7 +24,7 @@ The conductor doesn't cook—but without the conductor, chaos ensues!
 
 ## 6.2 The Main Function: Entry Point
 
-See `main.rs:24-173`:
+See `main.rs:24-210`:
 
 ```rust
 fn main() -> std::process::ExitCode {
@@ -50,8 +50,13 @@ fn main() -> std::process::ExitCode {
         }
     };
 
-    if !project_dir.exists() || !project_dir.is_dir() {
-        tracing::error!(path = %project_dir.display(), "Invalid project directory");
+    if !project_dir.exists() {
+        tracing::error!(path = %project_dir.display(), "Project directory does not exist");
+        return ExitCode::IoErr.into();
+    }
+
+    if !project_dir.is_dir() {
+        tracing::error!(path = %project_dir.display(), "Project path is not a directory");
         return ExitCode::IoErr.into();
     }
 
@@ -67,6 +72,16 @@ fn main() -> std::process::ExitCode {
 
     let indexer_config =
         || IndexerConfig { follow_symlinks: cli.follow_symlinks, ..Default::default() };
+
+    if cli.refresh
+        && matches!(
+            cli.command,
+            Some(Commands::Index { .. } | Commands::Doctor { .. } | Commands::Init { .. })
+        )
+    {
+        tracing::error!("--refresh is only valid for search operations");
+        return ExitCode::DataErr.into();
+    }
 
     match &cli.command {
         Some(Commands::Doctor { verbose, json }) => {
@@ -94,10 +109,17 @@ fn main() -> std::process::ExitCode {
         }
         Some(Commands::Search { query, paths, format, benchmark, no_auto_init }) => {
             if *benchmark {
+                if cli.refresh {
+                    tracing::warn!("--refresh ignored in benchmark mode");
+                }
                 return run_benchmark(&project_dir, &pragma_config, cli.quiet);
             }
 
             let search_query = if query.is_empty() { &cli.query } else { query };
+            if cli.refresh && query_is_empty(search_query) {
+                tracing::error!("--refresh requires a search query or stdin JSON");
+                return ExitCode::DataErr.into();
+            }
             let output_format = format.unwrap_or(OutputFormat::Plain);
             return run_search(
                 &project_dir,
@@ -106,12 +128,13 @@ fn main() -> std::process::ExitCode {
                 search_query,
                 *paths,
                 output_format,
+                cli.refresh,
                 *no_auto_init,
                 cli.quiet,
             );
         }
         None => {
-            if cli.query_string().is_some() {
+            if !query_is_empty(&cli.query) {
                 return run_search(
                     &project_dir,
                     &pragma_config,
@@ -119,9 +142,45 @@ fn main() -> std::process::ExitCode {
                     &cli.query,
                     false,
                     OutputFormat::Plain,
+                    cli.refresh,
                     false,
                     cli.quiet,
                 );
+            }
+
+            let stdin = io::stdin();
+            if !stdin.is_terminal() {
+                if let Some(Ok(line)) = stdin.lock().lines().next() {
+                    if let Ok(input) = serde_json::from_str::<StdinQuery>(&line) {
+                        let trimmed_query = input.query.trim();
+                        if trimmed_query.is_empty() {
+                            if cli.refresh || input.refresh {
+                                tracing::error!("--refresh requires a search query or stdin JSON");
+                                return ExitCode::DataErr.into();
+                            }
+                        } else {
+                            let query_parts: Vec<String> =
+                                trimmed_query.split_whitespace().map(String::from).collect();
+                            let refresh = cli.refresh || input.refresh;
+                            return run_search(
+                                &project_dir,
+                                &pragma_config,
+                                indexer_config(),
+                                &query_parts,
+                                false,
+                                OutputFormat::Plain,
+                                refresh,
+                                false,
+                                cli.quiet,
+                            );
+                        }
+                    }
+                }
+            }
+
+            if cli.refresh {
+                tracing::error!("--refresh requires a search query or stdin JSON");
+                return ExitCode::DataErr.into();
             }
         }
     }
@@ -135,13 +194,13 @@ fn main() -> std::process::ExitCode {
 1. **Parse first** — Get user input before doing anything
 2. **Initialize logging** — Capture what's about to happen
 3. **Dispatch** — Route to appropriate handler
-4. **No command = implicit search or Claude Code mode** — Query runs search; otherwise stdin JSON is parsed
+4. **No command = implicit search or Claude Code mode** — Non-empty queries run search; otherwise stdin JSON is parsed
 
 ---
 
 ## 6.3 Running Indexing
 
-See `main.rs:178-258`:
+See `main.rs:200-310`:
 
 ```rust
 fn run_indexing(
@@ -173,35 +232,13 @@ fn run_indexing(
                 };
             }
         }
-        return ExitCode::Ok.into();
-    }
-
-    // Incremental index (skip unchanged files)
-    let db = match Database::open(&db_path, config) {
-        Ok(db) => db,
-        Err(e) => {
-            tracing::error!(error = %e, db_path = %db_path.display(), "Failed to open database");
-            return ExitCode::IoErr.into();
-        }
-    };
-    if let Err(e) = db.init_schema() {
-        tracing::error!(error = %e, "Failed to initialize schema");
-        return ExitCode::Software.into();
-    }
-
-    let mut indexer = Indexer::new(project_dir, db, indexer_config);
-    match indexer.index_directory() {
-        Ok(stats) => {
-            tracing::info!(
-                files = stats.files_indexed,
-                bytes = stats.bytes_indexed,
-                duration_secs = %format!("{:.2}", stats.duration.as_secs_f64()),
-                "Indexing complete"
-            );
-        }
-        Err(e) => {
-            tracing::error!(error = %e, "Indexing failed");
-            return ExitCode::Software.into();
+    } else {
+        match index_incremental(project_dir, &db_path, config, indexer_config) {
+            Ok(stats) => log_index_stats(&stats, "Indexing complete"),
+            Err(e) => {
+                tracing::error!(error = %e, "Indexing failed");
+                return map_index_error(e);
+            }
         }
     }
 
@@ -221,7 +258,7 @@ fn run_indexing(
 
 ## 6.4 Running Searches
 
-See `main.rs:337-420`:
+See `main.rs:350-520`:
 
 ```rust
 fn run_search(
@@ -231,11 +268,13 @@ fn run_search(
     query: &[String],
     paths_only: bool,
     format: OutputFormat,
+    refresh: bool,
     no_auto_init: bool,
     quiet: bool,
 ) -> std::process::ExitCode {
     let db_path = project_dir.join(DB_NAME);
     let query_str = query.join(" ");
+    let mut already_indexed = false;
 
     let health = health::check_health_fast(project_dir);
 
@@ -251,21 +290,27 @@ fn run_search(
                 );
             }
             if let Err(e) =
-                health::auto_init_with_config(project_dir, config, indexer_config, quiet)
+                health::auto_init_with_config(project_dir, config, indexer_config.clone(), quiet)
             {
                 tracing::error!(error = %e, "Auto-init failed");
                 return ExitCode::Software.into();
             }
+            already_indexed = true;
         }
 
         DatabaseHealth::SchemaInvalid | DatabaseHealth::Corrupted if !no_auto_init => {
             tracing::warn!(health = ?health, "Database corrupted, reinitializing");
-            if let Err(e) =
-                health::backup_and_reinit_with_config(project_dir, config, indexer_config, quiet)
+            if let Err(e) = health::backup_and_reinit_with_config(
+                project_dir,
+                config,
+                indexer_config.clone(),
+                quiet,
+            )
             {
                 tracing::error!(error = %e, "Reinit failed");
                 return ExitCode::Software.into();
             }
+            already_indexed = true;
         }
 
         DatabaseHealth::Missing | DatabaseHealth::Empty => {
@@ -294,6 +339,19 @@ fn run_search(
         _ => {
             tracing::error!("Unknown database health state");
             return ExitCode::Software.into();
+        }
+    }
+
+    if refresh && !already_indexed {
+        if !quiet {
+            tracing::info!("Refreshing index before search");
+        }
+        match index_incremental(project_dir, &db_path, config, indexer_config) {
+            Ok(stats) => log_index_stats(&stats, "Index refresh complete"),
+            Err(e) => {
+                tracing::error!(error = %e, "Index refresh failed");
+                return map_index_error(e);
+            }
         }
     }
 
@@ -553,7 +611,7 @@ The main function follows the **Orchestrator Pattern**:
 
 ## 6.9 Claude Code Integration
 
-See `main.rs:118-167`:
+See `main.rs:150-230`:
 
 ```rust
 // No args - try reading JSON from stdin (Claude Code integration)
@@ -562,9 +620,16 @@ let stdin = io::stdin();
 if !stdin.is_terminal() {
     if let Some(Ok(line)) = stdin.lock().lines().next() {
         if let Ok(input) = serde_json::from_str::<StdinQuery>(&line) {
-            if !input.query.is_empty() {
+            let trimmed_query = input.query.trim();
+            if trimmed_query.is_empty() {
+                if cli.refresh || input.refresh {
+                    tracing::error!("--refresh requires a search query or stdin JSON");
+                    return ExitCode::DataErr.into();
+                }
+            } else {
                 let query_parts: Vec<String> =
-                    input.query.split_whitespace().map(String::from).collect();
+                    trimmed_query.split_whitespace().map(String::from).collect();
+                let refresh = cli.refresh || input.refresh;
                 return run_search(
                     &project_dir,
                     &pragma_config,
@@ -572,6 +637,7 @@ if !stdin.is_terminal() {
                     &query_parts,
                     false,
                     OutputFormat::Plain,
+                    refresh,
                     false,
                     cli.quiet,
                 );
