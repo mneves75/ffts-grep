@@ -70,6 +70,10 @@ pub struct Cli {
     #[arg(long)]
     pub follow_symlinks: bool,
 
+    /// Refresh index before searching (explicitly indexes new files)
+    #[arg(long, global = true)]
+    pub refresh: bool,
+
     /// `SQLite` cache size in `KB` (negative) or `pages` (positive)
     #[arg(long, default_value = "-32000", value_parser = validate_cache_size)]
     pub pragma_cache_size: i64,
@@ -561,6 +565,22 @@ mod tests {
 
         let cli = Cli::parse_from([BIN_NAME, "--follow-symlinks"]);
         assert!(cli.follow_symlinks);
+    }
+
+    #[test]
+    fn test_refresh_flag() {
+        let cli = Cli::parse_from([BIN_NAME]);
+        assert!(!cli.refresh);
+
+        let cli = Cli::parse_from([BIN_NAME, "--refresh", "query"]);
+        assert!(cli.refresh);
+
+        let cli = Cli::parse_from([BIN_NAME, "search", "--refresh", "query"]);
+        assert!(cli.refresh);
+        match &cli.command {
+            Some(Commands::Search { query, .. }) => assert_eq!(query, &vec!["query"]),
+            _ => panic!("Expected Search subcommand"),
+        }
     }
 
     #[test]

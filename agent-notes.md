@@ -428,3 +428,15 @@
 - Decision: Record in tests.json for release evidence
 - Commands: cd rust-fts5-indexer && cargo build --release
 - Open questions: None
+2026-01-27 19:45:50 -0300
+- Step: Implement explicit refresh flag and refresh tests
+- Result: Added CLI/global refresh + stdin refresh handling; added refresh_behavior tests; updated README/CHANGELOG/CLAUDE docs
+- Decision: Refresh is search-only; invalid with index/init/doctor (DataErr)
+- Commands: apply_patch (main.rs, cli.rs, CHANGELOG.md, README.md, CLAUDE.md); cargo fmt; cargo clippy --all-targets -- -D warnings; cargo test
+- Open questions: None
+2026-01-27 19:47:30 -0300
+- Step: Update docs/learn CLI help excerpts for refresh flag
+- Result: Added --refresh option to docs/learn/05-cli_rs.md and docs/learn/14-exercises-solutions.md
+- Decision: Keep help output examples in sync with CLI options
+- Commands: apply_patch (docs/learn/05-cli_rs.md, docs/learn/14-exercises-solutions.md)
+- Open questions: None

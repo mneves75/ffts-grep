@@ -12,3 +12,11 @@
 
 ## Notes
 - This file tracks task-level progress; detailed run notes live in `agent-notes.md`.
+
+## Iteration 2: Explicit Refresh (Carmack Pass)
+
+- [x] Implement explicit refresh flag for CLI + stdin protocol
+- [x] Update docs/changelog for refresh behavior
+- [x] Add refresh regression tests
+- [x] Run format/lint/tests and record evidence
+- [x] Self-critique and verification
