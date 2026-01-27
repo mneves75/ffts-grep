@@ -133,6 +133,10 @@ fn main() -> std::process::ExitCode {
 
             // Use subcommand query if provided, fall back to top-level query
             let search_query = if query.is_empty() { &cli.query } else { query };
+            if cli.refresh && query_is_empty(search_query) {
+                tracing::error!("--refresh requires a search query or stdin JSON");
+                return ExitCode::DataErr.into();
+            }
             let output_format = format.unwrap_or(OutputFormat::Plain);
             return run_search(
                 &project_dir,
@@ -148,7 +152,7 @@ fn main() -> std::process::ExitCode {
         }
         None => {
             // No subcommand - check for search query (implicit search, auto-init enabled)
-            if cli.query_string().is_some() {
+            if !query_is_empty(&cli.query) {
                 return run_search(
                     &project_dir,
                     &pragma_config,
@@ -203,6 +207,10 @@ fn main() -> std::process::ExitCode {
     }
 
     ExitCode::Ok.into() // OK
+}
+
+fn query_is_empty(parts: &[String]) -> bool {
+    parts.iter().all(|part| part.trim().is_empty())
 }
 
 /// Run indexing operation (incremental or full reindex).

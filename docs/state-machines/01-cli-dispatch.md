@@ -52,7 +52,8 @@ stateDiagram-v2
     Doctor --> Exit
     Init --> Exit
     Index --> Exit
-    Search --> Exit
+        Search --> ExitDataErr: refresh set + empty/whitespace query
+        Search --> Exit
     ImplicitSearch --> Exit
     StdinSearch --> Exit
     ExitOk --> Exit
@@ -76,7 +77,7 @@ flowchart TD
     G -->|Err| H{refresh set?}
     H -->|yes| D
     H -->|no| E
-    G -->|Ok StdinQuery| I{query.is_empty()?}
+    G -->|Ok StdinQuery| I{query is empty/whitespace?}
     I -->|yes| J{refresh set?}
     J -->|yes| D
     J -->|no| E
