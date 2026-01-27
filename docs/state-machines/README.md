@@ -2,8 +2,8 @@
 
 Visual documentation of the ffts-grep (Rust FTS5 Indexer) component state machines using Mermaid diagrams.
 
-**Generated**: 2026-01-13
-**Source Version**: 0.11.1 (see `Cargo.toml`)
+**Generated**: 2026-01-27
+**Source Version**: 0.11.2 (see `Cargo.toml`)
 
 ## Diagrams
 
