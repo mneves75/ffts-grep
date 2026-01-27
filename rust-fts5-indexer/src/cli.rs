@@ -70,7 +70,7 @@ pub struct Cli {
     #[arg(long)]
     pub follow_symlinks: bool,
 
-    /// Refresh index before searching (explicitly indexes new files)
+    /// Refresh index before searching (requires a non-empty query)
     #[arg(long, global = true)]
     pub refresh: bool,
 

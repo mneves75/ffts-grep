@@ -524,3 +524,9 @@
 - Decision: Make user-facing behavior explicit for CLI and stdin integrations
 - Commands: apply_patch (CHANGELOG.md, README.md, progress.md)
 - Open questions: None
+2026-01-27 20:27:35 -0300
+- Step: Align CLI help text with refresh requirements
+- Result: Updated refresh flag description in cli.rs and matching docs/learn help snapshots
+- Decision: Make help output reflect behavior without relying on README
+- Commands: apply_patch (rust-fts5-indexer/src/cli.rs, docs/learn/05-cli_rs.md, docs/learn/14-exercises-solutions.md, progress.md)
+- Open questions: None
