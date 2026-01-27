@@ -61,3 +61,9 @@
 ## Iteration 10: CLI Dispatch Doc Consistency
 
 - [x] Remove stale query_string reference in CLI dispatch state machine
+
+## Iteration 11: Query String Whitespace Handling
+
+- [x] Make query_string ignore whitespace-only parts
+- [x] Add query_string whitespace unit test
+- [x] Update CLI docs snippet and run fmt/tests

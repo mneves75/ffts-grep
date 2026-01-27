@@ -548,3 +548,15 @@
 - Decision: Keep docs reflecting behavior rather than internal helper names
 - Commands: apply_patch (docs/state-machines/01-cli-dispatch.md, progress.md)
 - Open questions: None
+2026-01-27 20:40:05 -0300
+- Step: Harden query_string semantics
+- Result: query_string now trims/ignores whitespace-only parts; added unit test; updated docs snippet
+- Decision: Keep CLI helper semantics aligned with search validation
+- Commands: apply_patch (rust-fts5-indexer/src/cli.rs, docs/learn/05-cli_rs.md, progress.md); cargo fmt; cargo test
+- Open questions: None
+2026-01-27 20:40:40 -0300
+- Step: Verify lint after query_string change
+- Result: clippy clean
+- Decision: Keep lint checks consistent for code changes
+- Commands: cargo clippy --all-targets -- -D warnings
+- Open questions: None

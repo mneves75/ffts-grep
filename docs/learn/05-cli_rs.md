@@ -276,7 +276,15 @@ impl Cli {
 
     /// Get the query as a single string (if present).
     pub fn query_string(&self) -> Option<String> {
-        if self.query.is_empty() { None } else { Some(self.query.join(" ")) }
+        let mut parts = Vec::new();
+        for part in &self.query {
+            let trimmed = part.trim();
+            if !trimmed.is_empty() {
+                parts.push(trimmed);
+            }
+        }
+
+        if parts.is_empty() { None } else { Some(parts.join(" ")) }
     }
 
     /// Check if --index was passed

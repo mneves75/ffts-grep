@@ -259,7 +259,15 @@ impl Cli {
     /// Get the search query as a single string.
     #[must_use]
     pub fn query_string(&self) -> Option<String> {
-        if self.query.is_empty() { None } else { Some(self.query.join(" ")) }
+        let mut parts = Vec::new();
+        for part in &self.query {
+            let trimmed = part.trim();
+            if !trimmed.is_empty() {
+                parts.push(trimmed);
+            }
+        }
+
+        if parts.is_empty() { None } else { Some(parts.join(" ")) }
     }
 
     /// Returns true if index subcommand is requested.
@@ -478,6 +486,12 @@ mod tests {
     fn test_query_string_multiple() {
         let cli = Cli::parse_from([BIN_NAME, "test", "query", "here"]);
         assert_eq!(cli.query_string(), Some("test query here".to_string()));
+    }
+
+    #[test]
+    fn test_query_string_ignores_whitespace() {
+        let cli = Cli::parse_from([BIN_NAME, "   "]);
+        assert_eq!(cli.query_string(), None);
     }
 
     #[test]
