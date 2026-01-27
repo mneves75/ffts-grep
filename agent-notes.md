@@ -422,3 +422,9 @@
 - Decision: Release artifacts aligned with changelog and README version
 - Commands: git add ...; git commit -m "release: prepare 0.11.2"; git tag v0.11.2; git push; git push origin v0.11.2
 - Open questions: None
+2026-01-27 19:36:55 -0300
+- Step: Verify release build after refactors
+- Result: cargo build --release succeeded
+- Decision: Record in tests.json for release evidence
+- Commands: cd rust-fts5-indexer && cargo build --release
+- Open questions: None
