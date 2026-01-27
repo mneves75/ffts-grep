@@ -333,7 +333,7 @@ Compare regular and path-only search:
 
 ```bash
 ffts-grep search "main"
-ffts-grep search "main" --paths-only
+ffts-grep search "main" --paths
 ```
 
 **Deliverable:** What's the difference in results?
