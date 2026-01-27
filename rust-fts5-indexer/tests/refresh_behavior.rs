@@ -107,13 +107,7 @@ fn test_refresh_rejected_for_search_whitespace_query() {
     let dir = tempdir().unwrap();
 
     Command::new(assert_cmd::cargo::cargo_bin!("ffts-grep"))
-        .args([
-            "--project-dir",
-            dir.path().to_str().unwrap(),
-            "search",
-            "--refresh",
-            "   ",
-        ])
+        .args(["--project-dir", dir.path().to_str().unwrap(), "search", "--refresh", "   "])
         .assert()
         .failure()
         .code(2);
