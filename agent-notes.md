@@ -566,3 +566,9 @@
 - Decision: Track user-visible CLI behavior changes in Unreleased
 - Commands: apply_patch (CHANGELOG.md, progress.md)
 - Open questions: None
+2026-01-27 20:42:45 -0300
+- Step: Document query_is_empty helper
+- Result: Added helper snippet in main.rs chapter
+- Decision: Make whitespace handling explicit in tutorial
+- Commands: apply_patch (docs/learn/06-main_rs.md, progress.md)
+- Open questions: None
