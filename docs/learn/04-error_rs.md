@@ -178,9 +178,9 @@ These exit codes follow the BSD `sysexits.h` convention:
 | 0 | `EX_OK` | Success |
 | 1 | `EX_SOFTWARE` | Internal software error |
 | 2 | `EX_DATAERR` | Data format error |
-| 3 | `EX_NOINPUT` | File not found |
-| 4 | `EX_SOFTWARE` | (used for noinput) |
-| 5 | `EX_CANTCREAT` | Can't create file |
+| 3 | `EX_IOERR` | I/O error |
+| 4 | `EX_NOINPUT` | No input |
+| 5 | `EX_NOPERM` | Permission denied |
 
 ---
 
