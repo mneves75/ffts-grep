@@ -292,16 +292,17 @@ rust-fts5-indexer/
 ├── Cargo.toml              ← Project configuration and dependencies
 ├── src/
 │   ├── main.rs             ← Entry point (uses library)
-│   ├── lib.rs              ← Library exports and constants (76 lines)
-│   ├── cli.rs              ← Command-line argument parsing (653 lines)
-│   ├── db.rs               ← SQLite FTS5 database layer (1430 lines)
-│   ├── indexer.rs          ← Directory walking and indexing (919 lines)
-│   ├── search.rs           ← Query execution and formatting (506 lines)
+│   ├── lib.rs              ← Library exports and constants (88 lines)
+│   ├── cli.rs              ← Command-line argument parsing (673 lines)
+│   ├── db.rs               ← SQLite FTS5 database layer (1436 lines)
+│   ├── indexer.rs          ← Directory walking and indexing (974 lines)
+│   ├── search.rs           ← Query execution and formatting (538 lines)
 │   ├── doctor.rs           ← Diagnostic checks (842 lines)
-│   ├── init.rs             ← Project initialization (418 lines)
+│   ├── init.rs             ← Project initialization (423 lines)
 │   ├── error.rs            ← Error types (179 lines)
-│   ├── health.rs           ← Database health checks (972 lines)
-│   └── constants.rs        ← Constants (16 lines)
+│   ├── fs_utils.rs         ← File system sync helpers (106 lines)
+│   ├── health.rs           ← Database health checks (991 lines)
+│   └── constants.rs        ← Constants (23 lines)
 ├── tests/
 │   └── integration.rs      ← Full integration tests
 └── benches/
