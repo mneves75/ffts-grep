@@ -67,3 +67,7 @@
 - [x] Make query_string ignore whitespace-only parts
 - [x] Add query_string whitespace unit test
 - [x] Update CLI docs snippet and run fmt/tests
+
+## Iteration 12: Changelog Accuracy
+
+- [x] Record implicit whitespace query fix in changelog
