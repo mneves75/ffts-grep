@@ -80,6 +80,18 @@ fn test_refresh_via_stdin_json() {
 }
 
 #[test]
+fn test_refresh_rejects_whitespace_query_via_stdin() {
+    let dir = tempdir().unwrap();
+
+    Command::new(assert_cmd::cargo::cargo_bin!("ffts-grep"))
+        .args(["--project-dir", dir.path().to_str().unwrap()])
+        .write_stdin("{\"query\":\"   \",\"refresh\":true}\n")
+        .assert()
+        .failure()
+        .code(2);
+}
+
+#[test]
 fn test_refresh_requires_auto_init_when_missing() {
     let dir = tempdir().unwrap();
 

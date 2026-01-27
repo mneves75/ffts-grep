@@ -506,3 +506,9 @@
 - Decision: Require query for refresh even when stdin is non-terminal to avoid silent no-op
 - Commands: apply_patch (rust-fts5-indexer/src/main.rs, docs/state-machines/01-cli-dispatch.md); cargo test; cargo clippy --all-targets -- -D warnings; cargo build --release
 - Open questions: None
+2026-01-27 20:21:05 -0300
+- Step: Treat whitespace-only stdin query as empty
+- Result: stdin JSON now trims query before emptiness check; refresh with whitespace is rejected
+- Decision: Align stdin behavior with CLI semantics to prevent silent refresh on blank queries
+- Commands: apply_patch (rust-fts5-indexer/src/main.rs, rust-fts5-indexer/tests/refresh_behavior.rs); cargo test; cargo clippy --all-targets -- -D warnings
+- Open questions: None

@@ -169,14 +169,15 @@ fn main() -> std::process::ExitCode {
             if !stdin.is_terminal() {
                 if let Some(Ok(line)) = stdin.lock().lines().next() {
                     if let Ok(input) = serde_json::from_str::<StdinQuery>(&line) {
-                        if input.query.is_empty() {
+                        let trimmed_query = input.query.trim();
+                        if trimmed_query.is_empty() {
                             if cli.refresh || input.refresh {
                                 tracing::error!("--refresh requires a search query or stdin JSON");
                                 return ExitCode::DataErr.into();
                             }
                         } else {
                             let query_parts: Vec<String> =
-                                input.query.split_whitespace().map(String::from).collect();
+                                trimmed_query.split_whitespace().map(String::from).collect();
                             let refresh = cli.refresh || input.refresh;
                             return run_search(
                                 &project_dir,

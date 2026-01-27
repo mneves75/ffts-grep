@@ -26,3 +26,9 @@
 - [x] Enforce refresh query requirement for empty/non-terminal stdin
 - [x] Update CLI dispatch state machine docs
 - [x] Re-run tests, clippy, and release build
+
+## Iteration 4: Refresh Whitespace Guard
+
+- [x] Treat whitespace-only stdin query as empty
+- [x] Add regression coverage for whitespace refresh
+- [x] Re-run tests and clippy
