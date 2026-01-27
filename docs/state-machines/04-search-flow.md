@@ -19,13 +19,13 @@ stateDiagram-v2
         CheckHealthFast --> Unreadable
     }
 
-    Healthy --> OpenDatabase
+    Healthy --> RefreshCheck
 
     state "Auto-Init Path" as AutoInit {
         Missing --> CheckAutoInit: !no_auto_init
         Empty --> CheckAutoInit
         CheckAutoInit --> DoAutoInit: auto_init enabled
-        DoAutoInit --> OpenDatabase: success
+        DoAutoInit --> RefreshCheck: success
         DoAutoInit --> ExitSoftware: failure
     }
 
@@ -33,7 +33,7 @@ stateDiagram-v2
         SchemaInvalid --> CheckAutoInitReinit: !no_auto_init
         Corrupted --> CheckAutoInitReinit
         CheckAutoInitReinit --> DoBackupReinit: auto_init enabled
-        DoBackupReinit --> OpenDatabase: success
+        DoBackupReinit --> RefreshCheck: success
         DoBackupReinit --> ExitSoftware: failure
     }
 
@@ -49,6 +49,13 @@ stateDiagram-v2
 
     state "Wildcard" as Wild {
         [*] --> ExitSoftware: Unknown health state
+    }
+
+    state RefreshCheck {
+        [*] --> RefreshGate
+        RefreshGate --> RefreshIndex: refresh && !already_indexed
+        RefreshGate --> OpenDatabase: no refresh or already indexed
+        RefreshIndex --> OpenDatabase
     }
 
     OpenDatabase --> InitSchema
@@ -91,27 +98,28 @@ flowchart TD
 ```mermaid
 flowchart LR
     A[Raw Query] --> B["Remove FTS5 special chars:<br/>* \" ( ) : ^ @ ~ -"]
-    B --> C[Collapse multiple whitespace]
+    B --> C[Collapse whitespace + trim]
     C --> D{Empty after trim?}
     D -->|yes| E[Return empty vec]
-    D -->|no| F[Execute FTS5 MATCH]
+    D -->|no| F[Auto-prefix if trailing '-' or '_' ]
+    F --> G[Execute FTS5 MATCH]
 ```
 
 ## BM25 Ranking Query
 
 ```sql
 -- paths_only = false (full search)
-SELECT path, bm25(files_fts, 100.0, 50.0, 1.0)
+SELECT path, bm25(files_fts, 100.0, 50.0, 1.0) AS rank
 FROM files_fts
 WHERE files_fts MATCH ?1
-ORDER BY bm25(files_fts, 100.0, 50.0, 1.0)
+ORDER BY rank
 LIMIT ?2
 
 -- paths_only = true
-SELECT path, bm25(files_fts, 100.0, 50.0, 1.0)
+SELECT path, bm25(files_fts, 100.0, 50.0, 1.0) AS rank
 FROM files_fts
 WHERE path MATCH ?1  -- Only match path column
-ORDER BY bm25(files_fts, 100.0, 50.0, 1.0)
+ORDER BY rank
 LIMIT ?2
 ```
 
@@ -135,7 +143,7 @@ flowchart TD
 
     B -->|Json| F[Map to JsonSearchResult]
     F --> G[Wrap in JsonOutput struct]
-    G --> H[serde_json::to_string_pretty]
+    G --> H[serde_json::to_writer_pretty]
     H --> E
 ```
 
