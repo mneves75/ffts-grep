@@ -446,3 +446,9 @@
 - Decision: Keep refresh changes in Unreleased (no version bump)
 - Commands: git add ...; git commit -m "feat(search): add explicit refresh"; git push
 - Open questions: None
+2026-01-27 19:52:40 -0300
+- Step: Add stdin refresh regression test
+- Result: Added test_refresh_via_stdin_json in refresh_behavior.rs
+- Decision: Ensure stdin protocol matches CLI refresh behavior
+- Commands: cat >> rust-fts5-indexer/tests/refresh_behavior.rs; cargo fmt; cargo clippy --all-targets -- -D warnings; cargo test
+- Open questions: None
