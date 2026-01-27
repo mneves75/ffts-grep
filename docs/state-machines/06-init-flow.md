@@ -166,8 +166,8 @@ flowchart TD
 
 | Error | Exit Code | Message |
 |-------|-----------|---------|
-| Gitignore write fail | IOERR (74) | Failed to update .gitignore |
-| DB open fail | IOERR (74) | Failed to open/create database |
-| Schema init fail | SOFTWARE (70) | Failed to initialize schema |
-| Index fail | SOFTWARE (70) | Indexing failed during initialization |
-| Output fail | SOFTWARE (70) | Failed to output init results |
+| Gitignore write fail | IoErr (3) | Failed to update .gitignore |
+| DB open fail | IoErr (3) | Failed to open/create database |
+| Schema init fail | Software (1) | Failed to initialize schema |
+| Index fail | Software (1) | Indexing failed during initialization |
+| Output fail | Software (1) | Failed to output init results |
