@@ -452,3 +452,9 @@
 - Decision: Ensure stdin protocol matches CLI refresh behavior
 - Commands: cat >> rust-fts5-indexer/tests/refresh_behavior.rs; cargo fmt; cargo clippy --all-targets -- -D warnings; cargo test
 - Open questions: None
+2026-01-27 19:54:10 -0300
+- Step: Add refresh/no-auto-init guard test
+- Result: Added test_refresh_requires_auto_init_when_missing in refresh_behavior.rs
+- Decision: Ensure refresh does not bypass no_auto_init on missing DB
+- Commands: cat >> rust-fts5-indexer/tests/refresh_behavior.rs; cargo fmt; cargo clippy --all-targets -- -D warnings; cargo test
+- Open questions: None
