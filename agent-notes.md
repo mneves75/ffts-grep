@@ -482,3 +482,9 @@
 - Decision: Avoid misleading docs for scripting users
 - Commands: apply_patch (docs/learn/04-error_rs.md)
 - Open questions: None
+2026-01-27 20:05:20 -0300
+- Step: Normalize Homebrew plan version placeholders
+- Result: Replaced hardcoded 0.11.1 references with <VERSION> placeholders and added guidance
+- Decision: Keep release planning doc evergreen
+- Commands: apply_patch (docs/HOMEBREW-FORMULA-PLAN.md)
+- Open questions: None
