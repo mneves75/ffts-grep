@@ -45,7 +45,8 @@ stateDiagram-v2
         CheckStdin --> ExitOk: is_terminal (no input)
 
         ParseStdinJson --> StdinSearch: valid JSON with query (refresh optional)
-        ParseStdinJson --> ExitOk: invalid/empty
+        ParseStdinJson --> ExitDataErr: refresh set + invalid/empty
+        ParseStdinJson --> ExitOk: invalid/empty (no refresh)
     }
 
     Doctor --> Exit
@@ -67,14 +68,20 @@ stateDiagram-v2
 ```mermaid
 flowchart TD
     A[No subcommand, no query] --> B{stdin.is_terminal()?}
-    B -->|yes| C[Exit 0 - no input]
-    B -->|no| D[Read one line from stdin]
-    D --> E{Parse as JSON}
-    E -->|Err| C
-    E -->|Ok StdinQuery| F{query.is_empty()?}
-    F -->|yes| C
-    F -->|no| G[Split query by whitespace]
-    G --> H[run_search with refresh? (cli or stdin)]
+    B -->|yes| C{refresh set?}
+    C -->|yes| D[Exit 2 - DataErr]
+    C -->|no| E[Exit 0 - no input]
+    B -->|no| F[Read one line from stdin]
+    F --> G{Parse as JSON}
+    G -->|Err| H{refresh set?}
+    H -->|yes| D
+    H -->|no| E
+    G -->|Ok StdinQuery| I{query.is_empty()?}
+    I -->|yes| J{refresh set?}
+    J -->|yes| D
+    J -->|no| E
+    I -->|no| K[Split query by whitespace]
+    K --> L[run_search with refresh? (cli or stdin)]
 ```
 
 ## Exit Codes Mapping

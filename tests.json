@@ -1,7 +1,7 @@
 {
   "tests_run": [
     {
-      "command": "cargo fmt",
+      "command": "cargo test",
       "result": "passed"
     },
     {
@@ -9,10 +9,10 @@
       "result": "passed"
     },
     {
-      "command": "cargo test",
+      "command": "cargo build --release",
       "result": "passed"
     }
   ],
   "status": "passed",
-  "last_updated": "2026-01-27T19:55:14-03:00"
+  "last_updated": "2026-01-27T20:15:59-03:00"
 }

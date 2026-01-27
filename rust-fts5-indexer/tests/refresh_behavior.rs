@@ -96,3 +96,31 @@ fn test_refresh_requires_auto_init_when_missing() {
         .failure()
         .code(2);
 }
+
+#[test]
+fn test_refresh_rejected_for_doctor_and_init() {
+    let dir = tempdir().unwrap();
+
+    Command::new(assert_cmd::cargo::cargo_bin!("ffts-grep"))
+        .args(["--project-dir", dir.path().to_str().unwrap(), "doctor", "--refresh"])
+        .assert()
+        .failure()
+        .code(2);
+
+    Command::new(assert_cmd::cargo::cargo_bin!("ffts-grep"))
+        .args(["--project-dir", dir.path().to_str().unwrap(), "init", "--refresh"])
+        .assert()
+        .failure()
+        .code(2);
+}
+
+#[test]
+fn test_refresh_without_query_is_error() {
+    let dir = tempdir().unwrap();
+
+    Command::new(assert_cmd::cargo::cargo_bin!("ffts-grep"))
+        .args(["--project-dir", dir.path().to_str().unwrap(), "--refresh"])
+        .assert()
+        .failure()
+        .code(2);
+}

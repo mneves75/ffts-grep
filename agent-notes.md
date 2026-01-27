@@ -500,3 +500,9 @@
 - Decision: Keep exit code references consistent across docs
 - Commands: apply_patch (docs/state-machines/06-init-flow.md)
 - Open questions: None
+2026-01-27 20:16:40 -0300
+- Step: Enforce refresh query requirement for empty stdin
+- Result: main.rs now errors on --refresh when stdin JSON is empty/invalid; tests cover non-tty case
+- Decision: Require query for refresh even when stdin is non-terminal to avoid silent no-op
+- Commands: apply_patch (rust-fts5-indexer/src/main.rs, docs/state-machines/01-cli-dispatch.md); cargo test; cargo clippy --all-targets -- -D warnings; cargo build --release
+- Open questions: None

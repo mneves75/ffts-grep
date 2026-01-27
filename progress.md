@@ -20,3 +20,9 @@
 - [x] Add refresh regression tests
 - [x] Run format/lint/tests and record evidence
 - [x] Self-critique and verification
+
+## Iteration 3: Refresh No-Query Guard
+
+- [x] Enforce refresh query requirement for empty/non-terminal stdin
+- [x] Update CLI dispatch state machine docs
+- [x] Re-run tests, clippy, and release build
