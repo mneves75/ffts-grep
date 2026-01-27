@@ -488,3 +488,9 @@
 - Decision: Keep release planning doc evergreen
 - Commands: apply_patch (docs/HOMEBREW-FORMULA-PLAN.md)
 - Open questions: None
+2026-01-27 20:06:30 -0300
+- Step: Update tutorial file tree line counts
+- Result: Refreshed line counts and added fs_utils.rs in docs/learn/README.md
+- Decision: Keep structure overview accurate for readers
+- Commands: wc -l rust-fts5-indexer/src/*.rs; apply_patch (docs/learn/README.md)
+- Open questions: None
