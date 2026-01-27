@@ -440,3 +440,9 @@
 - Decision: Keep help output examples in sync with CLI options
 - Commands: apply_patch (docs/learn/05-cli_rs.md, docs/learn/14-exercises-solutions.md)
 - Open questions: None
+2026-01-27 19:50:40 -0300
+- Step: Commit and push explicit refresh feature
+- Result: Commit "feat(search): add explicit refresh" pushed to main
+- Decision: Keep refresh changes in Unreleased (no version bump)
+- Commands: git add ...; git commit -m "feat(search): add explicit refresh"; git push
+- Open questions: None
