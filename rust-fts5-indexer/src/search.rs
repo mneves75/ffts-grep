@@ -26,15 +26,15 @@ impl Default for SearchConfig {
 
 /// Search result for JSON output.
 #[derive(Debug, Serialize)]
-pub struct JsonSearchResult {
-    pub path: String,
+pub struct JsonSearchResult<'a> {
+    pub path: &'a str,
     pub rank: f64,
 }
 
 /// JSON output structure.
 #[derive(Debug, Serialize)]
-pub struct JsonOutput {
-    pub results: Vec<JsonSearchResult>,
+pub struct JsonOutput<'a> {
+    pub results: Vec<JsonSearchResult<'a>>,
 }
 
 /// FTS5 search executor.
@@ -140,33 +140,39 @@ impl<'a> Searcher<'a> {
         // ~ - proximity (remove)
         // - - negation (replace with space)
 
-        let mut result = String::with_capacity(query.len() + 1); // +1 for potential '*'
+        let mut result = String::with_capacity(trimmed.len() + 1); // +1 for potential '*'
+        let mut last_was_space = true;
 
         for ch in trimmed.chars() {
-            match ch {
-                '*' | '"' | '(' | ')' | ':' | '^' | '@' | '~' => {
-                    // Remove special operators
-                    result.push(' ');
-                }
+            let mapped = match ch {
+                '*' | '"' | '(' | ')' | ':' | '^' | '@' | '~' => ' ',
                 '-' | '_' | '.' | '/' | '\\' | '[' | ']' | '{' | '}' | '+' | '!' | '=' | '>'
-                | '<' | '&' | '|' => {
-                    // Replace with space to avoid FTS5 syntax
+                | '<' | '&' | '|' => ' ',
+                ch if ch.is_whitespace() => ' ',
+                _ => ch,
+            };
+
+            if mapped == ' ' {
+                if !last_was_space {
                     result.push(' ');
+                    last_was_space = true;
                 }
-                '\n' | '\r' | '\t' => {
-                    // Whitespace is already handled by FTS5
-                    result.push(ch);
-                }
-                _ => {
-                    result.push(ch);
-                }
+            } else {
+                result.push(mapped);
+                last_was_space = false;
             }
         }
 
-        let sanitized = result.split_whitespace().collect::<Vec<_>>().join(" ");
+        if result.ends_with(' ') {
+            result.pop();
+        }
 
         // Apply auto-prefix: append '*' to enable FTS5 prefix matching
-        if auto_prefix && !sanitized.is_empty() { format!("{sanitized}*") } else { sanitized }
+        if auto_prefix && !result.is_empty() {
+            result.push('*');
+        }
+
+        result
     }
 
     /// Format and output search results.
@@ -192,15 +198,15 @@ impl<'a> Searcher<'a> {
 
     /// Format results as JSON.
     fn format_json<W: Write>(results: &[SearchResult], output: &mut W) -> Result<()> {
-        let json_results: Vec<JsonSearchResult> = results
+        let json_results: Vec<JsonSearchResult<'_>> = results
             .iter()
-            .map(|r| JsonSearchResult { path: r.path.clone(), rank: r.rank })
+            .map(|r| JsonSearchResult { path: r.path.as_str(), rank: r.rank })
             .collect();
 
         let output_struct = JsonOutput { results: json_results };
 
-        let json = serde_json::to_string_pretty(&output_struct)?;
-        writeln!(output, "{json}")?;
+        serde_json::to_writer_pretty(&mut *output, &output_struct)?;
+        writeln!(output)?;
         Ok(())
     }
 }
@@ -255,6 +261,32 @@ mod tests {
 
         let sanitized = Searcher::sanitize_query("a*b\"c   d");
         assert_eq!(sanitized, "a b c d");
+    }
+
+    #[test]
+    fn test_sanitize_query_collapses_newlines_and_tabs() {
+        let config = SearchConfig::default();
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join(DB_NAME);
+        let mut db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+        db.init_schema().unwrap();
+        let _searcher = Searcher::new(&mut db, config);
+
+        let sanitized = Searcher::sanitize_query("a\tb\nc\r\td");
+        assert_eq!(sanitized, "a b c d");
+    }
+
+    #[test]
+    fn test_sanitize_query_auto_prefix_trailing_whitespace() {
+        let config = SearchConfig::default();
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join(DB_NAME);
+        let mut db = Database::open(&db_path, &PragmaConfig::default()).unwrap();
+        db.init_schema().unwrap();
+        let _searcher = Searcher::new(&mut db, config);
+
+        let sanitized = Searcher::sanitize_query("intro-   ");
+        assert_eq!(sanitized, "intro*");
     }
 
     #[test]

@@ -404,3 +404,15 @@
 - Step: Committed version bump to 0.11.0, pushed to origin/main, and tagged v0.11.
 - Commands executed: git commit -m "Release 0.11.0"; git push; git tag -a v0.11 -m "Release 0.11.0"; git push --tags.
 - Outcome: origin/main updated and v0.11 tag published.
+2026-01-27 19:27:25 -0300
+- Step: Read all GUIDELINES-REF and repo docs
+- Result: Read 56 files from ~/dev/GUIDELINES-REF and repo docs/
+- Decision: Apply SECURITY, DEV, SOFTWARE-ENGINEERING, LOG, AUDIT guidance to refactor plan
+- Commands: python3 script to read GUIDELINES-REF and docs/
+- Open questions: None
+2026-01-27 19:31:10 -0300
+- Step: Implement search/db optimizations and add tests
+- Result: Optimized query sanitization, JSON output, SQL ordering, and prune delete statement; added sanitize tests
+- Decision: Keep behavior stable while reducing allocations and redundant SQL work
+- Commands: apply_patch (search.rs, db.rs); cargo fmt; cargo clippy --all-targets -- -D warnings; cargo test
+- Open questions: None
