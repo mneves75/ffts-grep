@@ -536,3 +536,9 @@
 - Decision: Keep docs aligned with current control flow and error paths
 - Commands: apply_patch (docs/learn/06-main_rs.md, progress.md)
 - Open questions: None
+2026-01-27 20:32:15 -0300
+- Step: Align refresh flag wording in README/CLAUDE tables
+- Result: Updated tables to mention non-empty query requirement
+- Decision: Keep quick-reference docs consistent with behavior
+- Commands: apply_patch (README.md, CLAUDE.md, progress.md)
+- Open questions: None
