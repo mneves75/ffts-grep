@@ -1,139 +1,110 @@
-    Updating crates.io index
-     Locking 177 packages to latest Rust 1.85 compatible versions
-      Adding criterion v0.5.1 (available: v0.7.0)
-      Adding dirs v5.0.1 (available: v6.0.0)
-      Adding sysinfo v0.33.1 (available: v0.36.1)
-      Adding wasip2 v1.0.1+wasi-0.2.4 (available: v1.0.2+wasi-0.2.9, requires Rust 1.87.0)
-      Adding windows-sys v0.59.0 (available: v0.61.2)
-      Adding wyhash v0.5.0 (available: v0.6.0)
- Downloading crates ...
-  Downloaded clap_derive v4.5.55
-  Downloaded clap v4.5.55
-  Downloaded zmij v1.0.17
-  Downloaded zerocopy-derive v0.8.34
-  Downloaded clap_builder v4.5.55
-  Downloaded zerocopy v0.8.34
-   Compiling proc-macro2 v1.0.106
-   Compiling quote v1.0.44
-   Compiling unicode-ident v1.0.22
-   Compiling libc v0.2.180
    Compiling crossbeam-utils v0.8.21
-   Compiling autocfg v1.5.0
    Compiling memchr v2.7.6
    Compiling serde_core v1.0.228
    Compiling cfg-if v1.0.4
-   Compiling zmij v1.0.17
-   Compiling find-msvc-tools v0.1.8
    Compiling regex-syntax v0.8.8
-   Compiling shlex v1.3.0
-   Compiling pkg-config v0.3.32
    Compiling serde v1.0.228
-   Compiling cc v1.2.54
-   Compiling vcpkg v0.2.15
-   Compiling serde_json v1.0.149
    Compiling num-traits v0.2.19
-   Compiling aho-corasick v1.1.4
-   Compiling heck v0.5.0
-   Compiling thiserror v2.0.18
+   Compiling libc v0.2.180
    Compiling once_cell v1.21.3
-   Compiling libsqlite3-sys v0.36.0
-   Compiling regex-automata v0.4.13
-   Compiling crossbeam-epoch v0.9.18
-   Compiling crossbeam-deque v0.8.6
    Compiling anstyle v1.0.13
    Compiling pin-project-lite v0.2.16
-   Compiling zerocopy v0.8.34
+   Compiling zerocopy v0.8.33
+   Compiling zerocopy-derive v0.8.33
    Compiling smallvec v1.15.1
    Compiling rayon-core v1.13.0
    Compiling either v1.15.0
-   Compiling syn v2.0.114
-   Compiling itoa v1.0.17
-   Compiling clap_lex v0.7.7
-   Compiling same-file v1.0.6
+   Compiling zmij v1.0.12
    Compiling bitflags v2.10.0
+   Compiling aho-corasick v1.1.4
+   Compiling itoa v1.0.17
    Compiling foldhash v0.2.0
-   Compiling core-foundation-sys v0.8.7
    Compiling parking_lot_core v0.9.12
    Compiling log v0.4.29
-   Compiling hashbrown v0.16.1
+   Compiling core-foundation-sys v0.8.7
+   Compiling same-file v1.0.6
+   Compiling clap_lex v0.7.6
    Compiling walkdir v2.5.0
-   Compiling clap_builder v4.5.55
+   Compiling hashbrown v0.16.1
+   Compiling clap_builder v4.5.54
    Compiling tracing-core v0.1.36
-   Compiling bstr v1.12.1
-   Compiling regex v1.12.2
-   Compiling plotters-backend v0.3.7
    Compiling pin-utils v0.1.0
+   Compiling predicates-core v1.0.9
+   Compiling futures-core v0.3.31
+   Compiling option-ext v0.2.0
+   Compiling ciborium-io v0.2.2
+   Compiling futures-task v0.3.31
+   Compiling slab v0.4.11
+   Compiling regex-automata v0.4.13
+   Compiling crossbeam-epoch v0.9.18
+   Compiling plotters-backend v0.3.7
+   Compiling rustix v1.1.3
+   Compiling crossbeam-deque v0.8.6
+   Compiling scopeguard v1.2.0
    Compiling lazy_static v1.5.0
    Compiling getrandom v0.3.4
-   Compiling slab v0.4.11
-   Compiling predicates-core v1.0.9
-   Compiling serde_derive v1.0.228
-   Compiling clap_derive v4.5.55
-   Compiling thiserror-impl v2.0.18
-   Compiling zerocopy-derive v0.8.34
-   Compiling option-ext v0.2.0
-   Compiling rustix v1.1.3
-   Compiling futures-core v0.3.31
-   Compiling futures-task v0.3.31
-   Compiling ciborium-io v0.2.2
-   Compiling scopeguard v1.2.0
-   Compiling lock_api v0.4.14
-   Compiling futures-util v0.3.31
-   Compiling rayon v1.11.0
-   Compiling dirs-sys v0.4.1
-   Compiling clap v4.5.55
    Compiling sharded-slab v0.1.7
+   Compiling lock_api v0.4.14
    Compiling plotters-svg v0.3.7
+   Compiling futures-util v0.3.31
+   Compiling clap v4.5.54
+   Compiling dirs-sys v0.4.1
    Compiling float-cmp v0.10.0
-   Compiling globset v0.4.18
    Compiling tracing v0.1.44
-   Compiling matchers v0.2.0
+   Compiling rayon v1.11.0
    Compiling hashlink v0.11.0
    Compiling iana-time-zone v0.1.64
    Compiling itertools v0.10.5
+   Compiling serde_json v1.0.149
    Compiling errno v0.3.14
    Compiling thread_local v1.1.9
-   Compiling fallible-streaming-iterator v0.1.9
-   Compiling termtree v0.5.1
-   Compiling rand_core v0.6.4
-   Compiling difflib v0.4.0
-   Compiling fallible-iterator v0.3.0
+   Compiling libsqlite3-sys v0.36.0
    Compiling normalize-line-endings v0.3.0
    Compiling assert_cmd v2.1.2
    Compiling sdd v3.0.10
+   Compiling termtree v0.5.1
    Compiling cast v0.3.0
-   Compiling predicates v3.1.3
+   Compiling fallible-iterator v0.3.0
+   Compiling difflib v0.4.0
+   Compiling fallible-streaming-iterator v0.1.9
+   Compiling rand_core v0.6.4
    Compiling scc v2.4.0
-   Compiling tinytemplate v1.2.1
-   Compiling criterion-plot v0.5.0
-   Compiling wyhash v0.5.0
-   Compiling half v2.7.1
-   Compiling predicates-tree v1.0.12
+   Compiling bstr v1.12.1
+   Compiling regex v1.12.2
+   Compiling matchers v0.2.0
    Compiling tracing-subscriber v0.3.22
-   Compiling chrono v0.4.43
+   Compiling criterion-plot v0.5.0
+   Compiling globset v0.4.18
+   Compiling predicates v3.1.3
    Compiling ignore v0.4.25
+   Compiling rusqlite v0.38.0
+   Compiling wyhash v0.5.0
+   Compiling tinytemplate v1.2.1
+   Compiling predicates-tree v1.0.12
    Compiling futures-executor v0.3.31
-   Compiling ciborium-ll v0.2.2
-   Compiling plotters v0.3.7
-   Compiling ciborium v0.2.2
    Compiling parking_lot v0.12.5
+   Compiling chrono v0.4.42
    Compiling dirs v5.0.1
-   Compiling serial_test_derive v3.3.1
-   Compiling is-terminal v0.4.17
+   Compiling plotters v0.3.7
    Compiling wait-timeout v0.2.1
-   Compiling anes v0.1.6
+   Compiling is-terminal v0.4.17
+   Compiling thiserror v2.0.17
+   Compiling serial_test_derive v3.3.1
    Compiling oorandom v11.1.5
    Compiling fastrand v2.3.0
-   Compiling serial_test v3.3.1
+   Compiling anes v0.1.6
+   Compiling half v2.7.1
    Compiling tempfile v3.24.0
-   Compiling criterion v0.5.1
+   Compiling ciborium-ll v0.2.2
+   Compiling serial_test v3.3.1
+   Compiling ciborium v0.2.2
    Compiling sysinfo v0.33.1
-   Compiling rusqlite v0.38.0
-   Compiling ffts-indexer v0.11.2 (/private/tmp/ffts-baseline-v0.11.2/rust-fts5-indexer)
-    Finished `bench` profile [optimized] target(s) in 40.05s
-     Running unittests src/lib.rs (target/release/deps/ffts_indexer-faa3afb922c0c332)
+   Compiling criterion v0.5.1
+   Compiling ffts-indexer v0.11.2 (/Users/mneves/dev/PROJETOS/claude-fts5-file-index/rust-fts5-indexer)
+    Finished `bench` profile [optimized] target(s) in 18.07s
+     Running unittests src/lib.rs (target/release/deps/ffts_indexer-9b6a29044c194095)
 
-running 180 tests
+running 182 tests
 test cli::tests::test_db_name_constant ... ignored
 test cli::tests::test_default_mmap_size_matches_platform ... ignored
 test cli::tests::test_default_values ... ignored
@@ -153,9 +124,11 @@ test cli::tests::test_pragma_synchronous_valid_values ... ignored
 test cli::tests::test_project_dir_env_fallback ... ignored
 test cli::tests::test_project_dir_tilde_expansion ... ignored
 test cli::tests::test_query_parsing ... ignored
+test cli::tests::test_query_string_ignores_whitespace ... ignored
 test cli::tests::test_query_string_multiple ... ignored
 test cli::tests::test_query_string_single ... ignored
 test cli::tests::test_quiet_flag ... ignored
+test cli::tests::test_refresh_flag ... ignored
 test cli::tests::test_search_subcommand_benchmark ... ignored
 test cli::tests::test_search_subcommand_no_auto_init ... ignored
 test cli::tests::test_search_subcommand_with_query ... ignored
@@ -315,199 +288,207 @@ test search::tests::test_sanitize_query_special_chars ... ignored
 test search::tests::test_search_max_results ... ignored
 test search::tests::test_two_phase_deduplication ... ignored
 
-test result: ok. 0 passed; 0 failed; 180 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 182 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-     Running unittests src/main.rs (target/release/deps/ffts_grep-18e40f746e3c5d2e)
+     Running unittests src/main.rs (target/release/deps/ffts_grep-3770efeb44601853)
 
 running 1 test
 test tests::test_reindex_cleans_wal_files ... ignored
 
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-     Running unittests src/bin/release_tools.rs (target/release/deps/release_tools-cccd4af792c93cd9)
+     Running unittests src/bin/release_tools.rs (target/release/deps/release_tools-6df115e88424f607)
 
 running 1 test
 test tests::test_versions_match ... ignored
 
 test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-     Running benches/search_bench.rs (target/release/deps/search_bench-788fb7f0a22414e4)
+     Running benches/search_bench.rs (target/release/deps/search_bench-d621f8fbd3760081)
 Gnuplot not found, using plotters backend
 Benchmarking search/search/main
 Benchmarking search/search/main: Warming up for 3.0000 s
-Benchmarking search/search/main: Collecting 100 samples in estimated 5.0083 s (505k iterations)
+Benchmarking search/search/main: Collecting 100 samples in estimated 5.0053 s (500k iterations)
 Benchmarking search/search/main: Analyzing
-search/search/main      time:   [9.8205 µs 9.8811 µs 9.9572 µs]
-Found 6 outliers among 100 measurements (6.00%)
-  4 (4.00%) high mild
-  2 (2.00%) high severe
+search/search/main      time:   [10.045 µs 10.076 µs 10.111 µs]
+Found 5 outliers among 100 measurements (5.00%)
+  2 (2.00%) high mild
+  3 (3.00%) high severe
 Benchmarking search/search/function
 Benchmarking search/search/function: Warming up for 3.0000 s
-Benchmarking search/search/function: Collecting 100 samples in estimated 7.3202 s (15k iterations)
+Benchmarking search/search/function: Collecting 100 samples in estimated 6.8011 s (15k iterations)
 Benchmarking search/search/function: Analyzing
-search/search/function  time:   [440.67 µs 442.02 µs 443.41 µs]
-Found 6 outliers among 100 measurements (6.00%)
-  1 (1.00%) low mild
-  3 (3.00%) high mild
-  2 (2.00%) high severe
+search/search/function  time:   [443.50 µs 444.93 µs 446.46 µs]
+Found 3 outliers among 100 measurements (3.00%)
+  2 (2.00%) high mild
+  1 (1.00%) high severe
 Benchmarking search/search/println
 Benchmarking search/search/println: Warming up for 3.0000 s
-Benchmarking search/search/println: Collecting 100 samples in estimated 6.8277 s (15k iterations)
+Benchmarking search/search/println: Collecting 100 samples in estimated 6.8190 s (15k iterations)
 Benchmarking search/search/println: Analyzing
-search/search/println   time:   [444.83 µs 447.07 µs 449.54 µs]
-Found 1 outliers among 100 measurements (1.00%)
-  1 (1.00%) high mild
+search/search/println   time:   [447.40 µs 449.41 µs 451.88 µs]
+Found 3 outliers among 100 measurements (3.00%)
+  3 (3.00%) high severe
 Benchmarking search/search/Struct
 Benchmarking search/search/Struct: Warming up for 3.0000 s
-Benchmarking search/search/Struct: Collecting 100 samples in estimated 6.7973 s (15k iterations)
+Benchmarking search/search/Struct: Collecting 100 samples in estimated 6.8360 s (15k iterations)
 Benchmarking search/search/Struct: Analyzing
-search/search/Struct    time:   [443.50 µs 445.51 µs 447.50 µs]
-Found 3 outliers among 100 measurements (3.00%)
+search/search/Struct    time:   [453.24 µs 455.12 µs 457.27 µs]
+Found 12 outliers among 100 measurements (12.00%)
+  1 (1.00%) low severe
+  2 (2.00%) low mild
   3 (3.00%) high mild
+  6 (6.00%) high severe
 Benchmarking search/search/new
 Benchmarking search/search/new: Warming up for 3.0000 s
-Benchmarking search/search/new: Collecting 100 samples in estimated 6.7340 s (15k iterations)
+Benchmarking search/search/new: Collecting 100 samples in estimated 6.7315 s (15k iterations)
 Benchmarking search/search/new: Analyzing
-search/search/new       time:   [441.05 µs 442.72 µs 444.32 µs]
-Found 4 outliers among 100 measurements (4.00%)
-  4 (4.00%) low mild
+search/search/new       time:   [442.06 µs 443.49 µs 445.09 µs]
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) high mild
+  1 (1.00%) high severe
 Benchmarking search/search/helper
 Benchmarking search/search/helper: Warming up for 3.0000 s
-Benchmarking search/search/helper: Collecting 100 samples in estimated 5.1071 s (35k iterations)
+Benchmarking search/search/helper: Collecting 100 samples in estimated 5.3452 s (40k iterations)
 Benchmarking search/search/helper: Analyzing
-search/search/helper    time:   [133.20 µs 134.23 µs 135.43 µs]
+search/search/helper    time:   [131.97 µs 132.35 µs 132.79 µs]
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
 
 Benchmarking index/index_files/100
 Benchmarking index/index_files/100: Warming up for 3.0000 s
-Benchmarking index/index_files/100: Collecting 100 samples in estimated 8.8031 s (200 iterations)
+Benchmarking index/index_files/100: Collecting 100 samples in estimated 7.2386 s (300 iterations)
 Benchmarking index/index_files/100: Analyzing
-index/index_files/100   time:   [43.242 ms 46.794 ms 50.349 ms]
+index/index_files/100   time:   [24.378 ms 24.807 ms 25.361 ms]
+Found 8 outliers among 100 measurements (8.00%)
+  4 (4.00%) high mild
+  4 (4.00%) high severe
 Benchmarking index/index_files/500
 Benchmarking index/index_files/500: Warming up for 3.0000 s
 
-Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 20.2s, or reduce sample count to 20.
-Benchmarking index/index_files/500: Collecting 100 samples in estimated 20.207 s (100 iterations)
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 10.3s, or reduce sample count to 40.
+Benchmarking index/index_files/500: Collecting 100 samples in estimated 10.318 s (100 iterations)
 Benchmarking index/index_files/500: Analyzing
-index/index_files/500   time:   [185.67 ms 197.02 ms 208.71 ms]
-Found 1 outliers among 100 measurements (1.00%)
-  1 (1.00%) high mild
+index/index_files/500   time:   [106.19 ms 107.87 ms 109.87 ms]
+Found 10 outliers among 100 measurements (10.00%)
+  2 (2.00%) high mild
+  8 (8.00%) high severe
 Benchmarking index/index_files/1000
 Benchmarking index/index_files/1000: Warming up for 3.0000 s
 
-Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 30.9s, or reduce sample count to 10.
-Benchmarking index/index_files/1000: Collecting 100 samples in estimated 30.918 s (100 iterations)
+Warning: Unable to complete 100 samples in 5.0s. You may wish to increase target time to 21.5s, or reduce sample count to 20.
+Benchmarking index/index_files/1000: Collecting 100 samples in estimated 21.494 s (100 iterations)
 Benchmarking index/index_files/1000: Analyzing
-index/index_files/1000  time:   [304.27 ms 322.63 ms 341.58 ms]
+index/index_files/1000  time:   [214.22 ms 219.26 ms 225.12 ms]
+Found 7 outliers among 100 measurements (7.00%)
+  5 (5.00%) high mild
+  2 (2.00%) high severe
 
 Benchmarking wyhash_100bytes
 Benchmarking wyhash_100bytes: Warming up for 3.0000 s
-Benchmarking wyhash_100bytes: Collecting 100 samples in estimated 5.0000 s (174M iterations)
+Benchmarking wyhash_100bytes: Collecting 100 samples in estimated 5.0001 s (174M iterations)
 Benchmarking wyhash_100bytes: Analyzing
-wyhash_100bytes         time:   [28.509 ns 28.657 ns 28.811 ns]
-Found 5 outliers among 100 measurements (5.00%)
-  4 (4.00%) high mild
-  1 (1.00%) high severe
+wyhash_100bytes         time:   [28.488 ns 28.637 ns 28.791 ns]
+Found 3 outliers among 100 measurements (3.00%)
+  3 (3.00%) high mild
 
 Benchmarking cold_start_10k/cold_query
 Benchmarking cold_start_10k/cold_query: Warming up for 3.0000 s
-Benchmarking cold_start_10k/cold_query: Collecting 50 samples in estimated 5.0482 s (500 iterations)
+Benchmarking cold_start_10k/cold_query: Collecting 50 samples in estimated 5.2885 s (500 iterations)
 Benchmarking cold_start_10k/cold_query: Analyzing
 cold_start_10k/cold_query
-                        time:   [10.277 ms 10.325 ms 10.371 ms]
-Found 1 outliers among 50 measurements (2.00%)
-  1 (2.00%) low mild
+                        time:   [10.312 ms 10.335 ms 10.360 ms]
 Benchmarking cold_start_10k/warm_query
 Benchmarking cold_start_10k/warm_query: Warming up for 3.0000 s
-Benchmarking cold_start_10k/warm_query: Collecting 50 samples in estimated 5.1595 s (600 iterations)
+Benchmarking cold_start_10k/warm_query: Collecting 50 samples in estimated 5.0168 s (550 iterations)
 Benchmarking cold_start_10k/warm_query: Analyzing
 cold_start_10k/warm_query
-                        time:   [8.7489 ms 8.7876 ms 8.8295 ms]
-Found 1 outliers among 50 measurements (2.00%)
-  1 (2.00%) high mild
+                        time:   [8.8658 ms 9.1193 ms 9.4653 ms]
+Found 7 outliers among 50 measurements (14.00%)
+  7 (14.00%) high severe
 
 Benchmarking memory/index_rss/1000
 Benchmarking memory/index_rss/1000: Warming up for 3.0000 s
-  [1000 files] RSS sample after index: 60.9 MB (not peak)
-  [1000 files] RSS sample after index: 60.9 MB (not peak)
-  [1000 files] RSS sample after index: 60.9 MB (not peak)
-  [1000 files] RSS sample after index: 60.9 MB (not peak)
-Benchmarking memory/index_rss/1000: Collecting 10 samples in estimated 7.3592 s (20 iterations)
-  [1000 files] RSS sample after index: 60.9 MB (not peak)
-  [1000 files] RSS sample after index: 60.9 MB (not peak)
-  [1000 files] RSS sample after index: 60.9 MB (not peak)
-  [1000 files] RSS sample after index: 60.9 MB (not peak)
-  [1000 files] RSS sample after index: 60.9 MB (not peak)
-  [1000 files] RSS sample after index: 60.9 MB (not peak)
-  [1000 files] RSS sample after index: 60.9 MB (not peak)
-  [1000 files] RSS sample after index: 60.9 MB (not peak)
-  [1000 files] RSS sample after index: 60.9 MB (not peak)
-  [1000 files] RSS sample after index: 60.9 MB (not peak)
+  [1000 files] RSS sample after index: 64.2 MB (not peak)
+  [1000 files] RSS sample after index: 64.2 MB (not peak)
+  [1000 files] RSS sample after index: 64.2 MB (not peak)
+  [1000 files] RSS sample after index: 64.2 MB (not peak)
+Benchmarking memory/index_rss/1000: Collecting 10 samples in estimated 6.9132 s (30 iterations)
+  [1000 files] RSS sample after index: 64.2 MB (not peak)
+  [1000 files] RSS sample after index: 64.2 MB (not peak)
+  [1000 files] RSS sample after index: 64.2 MB (not peak)
+  [1000 files] RSS sample after index: 64.2 MB (not peak)
+  [1000 files] RSS sample after index: 64.2 MB (not peak)
+  [1000 files] RSS sample after index: 64.2 MB (not peak)
+  [1000 files] RSS sample after index: 64.2 MB (not peak)
+  [1000 files] RSS sample after index: 64.2 MB (not peak)
+  [1000 files] RSS sample after index: 64.2 MB (not peak)
+  [1000 files] RSS sample after index: 64.2 MB (not peak)
 Benchmarking memory/index_rss/1000: Analyzing
-memory/index_rss/1000   time:   [202.66 ms 218.91 ms 236.41 ms]
+memory/index_rss/1000   time:   [179.03 ms 186.95 ms 194.64 ms]
 Benchmarking memory/index_rss/5000
 Benchmarking memory/index_rss/5000: Warming up for 3.0000 s
-  [5000 files] RSS sample after index: 61.4 MB (not peak)
-  [5000 files] RSS sample after index: 61.4 MB (not peak)
+  [5000 files] RSS sample after index: 65.0 MB (not peak)
+  [5000 files] RSS sample after index: 65.0 MB (not peak)
 
-Warning: Unable to complete 10 samples in 5.0s. You may wish to increase target time to 16.7s.
-Benchmarking memory/index_rss/5000: Collecting 10 samples in estimated 16.713 s (10 iterations)
-  [5000 files] RSS sample after index: 61.4 MB (not peak)
-  [5000 files] RSS sample after index: 61.4 MB (not peak)
-  [5000 files] RSS sample after index: 61.4 MB (not peak)
-  [5000 files] RSS sample after index: 61.4 MB (not peak)
-  [5000 files] RSS sample after index: 61.4 MB (not peak)
-  [5000 files] RSS sample after index: 61.4 MB (not peak)
-  [5000 files] RSS sample after index: 61.4 MB (not peak)
-  [5000 files] RSS sample after index: 61.4 MB (not peak)
-  [5000 files] RSS sample after index: 61.5 MB (not peak)
-  [5000 files] RSS sample after index: 61.5 MB (not peak)
+Warning: Unable to complete 10 samples in 5.0s. You may wish to increase target time to 17.7s.
+Benchmarking memory/index_rss/5000: Collecting 10 samples in estimated 17.691 s (10 iterations)
+  [5000 files] RSS sample after index: 65.0 MB (not peak)
+  [5000 files] RSS sample after index: 65.0 MB (not peak)
+  [5000 files] RSS sample after index: 65.0 MB (not peak)
+  [5000 files] RSS sample after index: 65.0 MB (not peak)
+  [5000 files] RSS sample after index: 65.0 MB (not peak)
+  [5000 files] RSS sample after index: 65.0 MB (not peak)
+  [5000 files] RSS sample after index: 65.0 MB (not peak)
+  [5000 files] RSS sample after index: 65.0 MB (not peak)
+  [5000 files] RSS sample after index: 65.0 MB (not peak)
+  [5000 files] RSS sample after index: 65.0 MB (not peak)
 Benchmarking memory/index_rss/5000: Analyzing
-memory/index_rss/5000   time:   [1.3712 s 1.5845 s 1.8588 s]
-Found 2 outliers among 10 measurements (20.00%)
+memory/index_rss/5000   time:   [936.63 ms 1.0361 s 1.1535 s]
+Found 1 outliers among 10 measurements (10.00%)
   1 (10.00%) high mild
-  1 (10.00%) high severe
 Benchmarking memory/index_rss/10000
 Benchmarking memory/index_rss/10000: Warming up for 3.0000 s
-  [10000 files] RSS sample after index: 62.6 MB (not peak)
+  [10000 files] RSS sample after index: 65.2 MB (not peak)
 
-Warning: Unable to complete 10 samples in 5.0s. You may wish to increase target time to 52.1s.
-Benchmarking memory/index_rss/10000: Collecting 10 samples in estimated 52.126 s (10 iterations)
-  [10000 files] RSS sample after index: 56.3 MB (not peak)
-  [10000 files] RSS sample after index: 56.3 MB (not peak)
-  [10000 files] RSS sample after index: 56.5 MB (not peak)
-  [10000 files] RSS sample after index: 56.5 MB (not peak)
-  [10000 files] RSS sample after index: 56.5 MB (not peak)
-  [10000 files] RSS sample after index: 56.5 MB (not peak)
-  [10000 files] RSS sample after index: 56.5 MB (not peak)
-  [10000 files] RSS sample after index: 56.5 MB (not peak)
-  [10000 files] RSS sample after index: 56.5 MB (not peak)
-  [10000 files] RSS sample after index: 56.5 MB (not peak)
+Warning: Unable to complete 10 samples in 5.0s. You may wish to increase target time to 36.6s.
+Benchmarking memory/index_rss/10000: Collecting 10 samples in estimated 36.581 s (10 iterations)
+  [10000 files] RSS sample after index: 65.2 MB (not peak)
+  [10000 files] RSS sample after index: 65.2 MB (not peak)
+  [10000 files] RSS sample after index: 65.2 MB (not peak)
+  [10000 files] RSS sample after index: 65.2 MB (not peak)
+  [10000 files] RSS sample after index: 65.2 MB (not peak)
+  [10000 files] RSS sample after index: 65.2 MB (not peak)
+  [10000 files] RSS sample after index: 65.2 MB (not peak)
+  [10000 files] RSS sample after index: 55.3 MB (not peak)
+  [10000 files] RSS sample after index: 39.2 MB (not peak)
+  [10000 files] RSS sample after index: 39.2 MB (not peak)
 Benchmarking memory/index_rss/10000: Analyzing
-memory/index_rss/10000  time:   [2.6987 s 3.4352 s 4.2979 s]
+memory/index_rss/10000  time:   [2.4251 s 2.7082 s 2.9836 s]
 Benchmarking memory/search_rss
 Benchmarking memory/search_rss: Warming up for 3.0000 s
-  Search RSS sample: 57.9 MB (baseline: 57.9 MB)
-  Search RSS sample: 57.9 MB (baseline: 57.9 MB)
-  Search RSS sample: 57.9 MB (baseline: 57.9 MB)
-  Search RSS sample: 57.9 MB (baseline: 57.9 MB)
-  Search RSS sample: 57.9 MB (baseline: 57.9 MB)
-  Search RSS sample: 57.9 MB (baseline: 57.9 MB)
-  Search RSS sample: 57.9 MB (baseline: 57.9 MB)
-  Search RSS sample: 57.9 MB (baseline: 57.9 MB)
-  Search RSS sample: 57.9 MB (baseline: 57.9 MB)
-  Search RSS sample: 57.9 MB (baseline: 57.9 MB)
-  Search RSS sample: 57.9 MB (baseline: 57.9 MB)
-Benchmarking memory/search_rss: Collecting 10 samples in estimated 5.1489 s (1760 iterations)
-  Search RSS sample: 57.9 MB (baseline: 57.9 MB)
-  Search RSS sample: 58.2 MB (baseline: 58.2 MB)
-  Search RSS sample: 58.2 MB (baseline: 58.2 MB)
-  Search RSS sample: 58.2 MB (baseline: 58.2 MB)
-  Search RSS sample: 58.2 MB (baseline: 58.2 MB)
-  Search RSS sample: 58.2 MB (baseline: 58.2 MB)
-  Search RSS sample: 58.2 MB (baseline: 58.2 MB)
-  Search RSS sample: 58.2 MB (baseline: 58.2 MB)
-  Search RSS sample: 58.2 MB (baseline: 58.2 MB)
-  Search RSS sample: 58.2 MB (baseline: 58.2 MB)
+  Search RSS sample: 48.1 MB (baseline: 48.1 MB)
+  Search RSS sample: 48.1 MB (baseline: 48.1 MB)
+  Search RSS sample: 48.1 MB (baseline: 48.1 MB)
+  Search RSS sample: 48.2 MB (baseline: 48.2 MB)
+  Search RSS sample: 48.2 MB (baseline: 48.2 MB)
+  Search RSS sample: 48.2 MB (baseline: 48.2 MB)
+  Search RSS sample: 48.2 MB (baseline: 48.2 MB)
+  Search RSS sample: 48.2 MB (baseline: 48.2 MB)
+  Search RSS sample: 48.2 MB (baseline: 48.2 MB)
+  Search RSS sample: 48.2 MB (baseline: 48.2 MB)
+  Search RSS sample: 48.2 MB (baseline: 48.2 MB)
+Benchmarking memory/search_rss: Collecting 10 samples in estimated 5.0652 s (3410 iterations)
+  Search RSS sample: 48.2 MB (baseline: 48.2 MB)
+  Search RSS sample: 48.2 MB (baseline: 48.2 MB)
+  Search RSS sample: 48.2 MB (baseline: 48.2 MB)
+  Search RSS sample: 48.2 MB (baseline: 48.2 MB)
+  Search RSS sample: 48.2 MB (baseline: 48.2 MB)
+  Search RSS sample: 48.2 MB (baseline: 48.2 MB)
+  Search RSS sample: 48.2 MB (baseline: 48.2 MB)
+  Search RSS sample: 48.2 MB (baseline: 48.2 MB)
+  Search RSS sample: 48.2 MB (baseline: 48.2 MB)
+  Search RSS sample: 48.2 MB (baseline: 48.2 MB)
 Benchmarking memory/search_rss: Analyzing
-memory/search_rss       time:   [1.6212 ms 2.1253 ms 2.4508 ms]
+memory/search_rss       time:   [1.2338 ms 1.3055 ms 1.4470 ms]
 

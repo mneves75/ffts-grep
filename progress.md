@@ -79,3 +79,9 @@
 ## Iteration 14: Testing Docs Refresh Coverage
 
 - [x] Note refresh behavior tests in testing chapter
+
+## Iteration 15: Comparative Benchmarks
+
+- [x] Run baseline benchmarks on v0.11.2 tag and refresh baseline-benchmarks.txt
+- [x] Run final benchmarks on current code and capture final-benchmarks.txt
+- [x] Compare baseline vs final (no regressions > 5%)

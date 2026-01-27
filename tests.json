@@ -1,18 +1,14 @@
 {
   "tests_run": [
     {
-      "command": "cargo fmt",
+      "command": "cargo bench 2>&1 | tee final-benchmarks.txt",
       "result": "passed"
     },
     {
-      "command": "cargo test",
-      "result": "passed"
-    },
-    {
-      "command": "cargo clippy --all-targets -- -D warnings",
+      "command": "cargo bench 2>&1 | tee baseline-benchmarks.txt (v0.11.2 worktree)",
       "result": "passed"
     }
   ],
   "status": "passed",
-  "last_updated": "2026-01-27T20:40:18-03:00"
+  "last_updated": "2026-01-27T20:58:45-03:00"
 }

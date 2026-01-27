@@ -578,3 +578,9 @@
 - Decision: Keep testing docs aligned with new regression suite
 - Commands: apply_patch (docs/learn/13-testing.md, progress.md)
 - Open questions: None
+2026-01-27 20:59:20 -0300
+- Step: Run comparative benchmarks
+- Result: Baseline captured from v0.11.2 tag and final captured on current branch; 13 matched benchmarks with no regressions > 5%
+- Decision: Replace stale baseline-benchmarks.txt and record final-benchmarks.txt for evidence
+- Commands: cargo bench 2>&1 | tee final-benchmarks.txt; git worktree add /tmp/ffts-baseline-v0.11.2 v0.11.2; cargo bench 2>&1 | tee baseline-benchmarks.txt; python3 comparison script
+- Open questions: None

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Explicit refresh**: `--refresh` flag for search and stdin protocol to reindex before searching
+- **Benchmarks**: Updated baseline/final benchmark artifacts for regression tracking
 
 ### Fixed
 - **Refresh validation**: Reject empty or whitespace-only queries across CLI and stdin refresh modes
