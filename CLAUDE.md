@@ -149,7 +149,7 @@ Heavily optimized release builds:
 | `--quiet`, `-q` | Suppress status messages (for CI/scripting) |
 | `--project-dir=<path>` | Override project directory |
 | `--follow-symlinks` | Follow symbolic links during indexing (default: false) |
-| `--refresh` | Refresh index before search (search-only) |
+| `--refresh` | Refresh index before search (requires a non-empty query) |
 | `--pragma-cache-size=<n>` | SQLite cache size in KB (default: -32000 = 32MB) |
 | `--pragma-mmap-size=<n>` | Memory-mapped I/O size (platform-aware default) |
 | `--pragma-page-size=<n>` | Database page size (default: 4096) |

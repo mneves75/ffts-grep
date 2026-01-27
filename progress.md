@@ -53,3 +53,7 @@
 
 - [x] Update main.rs walkthrough to match refresh/query validation flow
 - [x] Refresh indexing/search snippets to reflect current implementation
+
+## Iteration 9: Refresh Table Wording
+
+- [x] Update README and CLAUDE refresh flag tables to mention non-empty query requirement
