@@ -868,8 +868,9 @@ ffts-grep index --reindex
 
 # Searching
 ffts-grep search "query"
-ffts-grep search "query" --paths-only
+ffts-grep search "query" --paths
 ffts-grep search "query" --format json
+ffts-grep search "query" --refresh
 
 # Diagnostics
 ffts-grep doctor
