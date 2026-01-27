@@ -21,7 +21,13 @@ stateDiagram-v2
         CheckIsDir --> ExitIoErr: !is_dir
     }
 
-    BuildPragmaConfig --> DispatchCommand
+    BuildPragmaConfig --> ValidateRefresh
+
+    state ValidateRefresh {
+        [*] --> CheckRefresh
+        CheckRefresh --> DispatchCommand: refresh ok or not set
+        CheckRefresh --> ExitDataErr: refresh used with index/init/doctor
+    }
 
     state DispatchCommand {
         [*] --> CheckCommand
@@ -35,9 +41,10 @@ stateDiagram-v2
         CheckQuery --> CheckStdin: query empty
 
         CheckStdin --> ParseStdinJson: !stdin.is_terminal()
+        CheckStdin --> ExitDataErr: refresh set + stdin terminal
         CheckStdin --> ExitOk: is_terminal (no input)
 
-        ParseStdinJson --> StdinSearch: valid JSON with query
+        ParseStdinJson --> StdinSearch: valid JSON with query (refresh optional)
         ParseStdinJson --> ExitOk: invalid/empty
     }
 
@@ -50,6 +57,7 @@ stateDiagram-v2
     ExitOk --> Exit
     ExitNoInput --> Exit
     ExitIoErr --> Exit
+    ExitDataErr --> Exit
 
     Exit --> [*]
 ```
@@ -66,20 +74,19 @@ flowchart TD
     E -->|Ok StdinQuery| F{query.is_empty()?}
     F -->|yes| C
     F -->|no| G[Split query by whitespace]
-    G --> H[run_search with auto-init]
+    G --> H[run_search with refresh? (cli or stdin)]
 ```
 
 ## Exit Codes Mapping
 
 | Exit Code | Constant | Triggers |
 |-----------|----------|----------|
-| 0 | `OK` | Success, no input |
-| 1 | `GENERAL` | General error |
-| 65 | `DATAERR` | Empty database, wrong app ID, search fail |
-| 66 | `NOINPUT` | Project dir resolution failed |
-| 70 | `SOFTWARE` | Schema init fail, indexing fail, output fail |
-| 74 | `IOERR` | Project dir not exists/not dir, DB open fail |
-| 77 | `NOPERM` | Database unreadable |
+| 0 | `Ok` | Success, no input |
+| 1 | `Software` | General error |
+| 2 | `DataErr` | Invalid args, search fail, wrong app ID |
+| 3 | `IoErr` | Project dir not exists/not dir, DB open fail |
+| 4 | `NoInput` | Project dir resolution failed |
+| 5 | `NoPerm` | Database unreadable |
 
 ## Project Directory Resolution
 
@@ -95,8 +102,8 @@ flowchart TD
     E --> G
     F --> G
 
-    G -->|no| H[Exit NOINPUT 66]
+    G -->|no| H[Exit NoInput 4]
     G -->|yes| I{Is directory?}
-    I -->|no| J[Exit IOERR 74]
+    I -->|no| J[Exit IoErr 3]
     I -->|yes| K[Continue to command dispatch]
 ```
