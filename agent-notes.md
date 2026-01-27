@@ -464,3 +464,9 @@
 - Decision: Keep tutorial outputs consistent with actual CLI behavior
 - Commands: apply_patch (docs/learn/05-cli_rs.md, docs/learn/14-exercises-solutions.md, docs/learn/09-search_rs.md)
 - Open questions: None
+2026-01-27 19:58:25 -0300
+- Step: Update tutorial and state-machine docs for refresh/version changes
+- Result: Bumped versions to 0.11.2; updated search flow diagram for refresh + query handling; aligned SQL/output examples
+- Decision: Keep docs accurate with latest search behavior
+- Commands: apply_patch (docs/learn/11-doctor_rs.md, docs/learn/14-exercises-solutions.md, docs/learn/README.md, docs/state-machines/README.md, docs/state-machines/04-search-flow.md)
+- Open questions: None
