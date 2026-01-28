@@ -590,3 +590,33 @@
 - Decision: Keep historical summaries accurate to current repository state
 - Commands: apply_patch (rust-fts5-indexer/CLIPPY_PEDANTIC_DIFF_SUMMARY.md, progress.md)
 - Open questions: None
+2026-01-27 21:27:50 -0300
+- Step: Review main.rs search config usage for magic numbers and doc readability
+- Result: Introduced DEFAULT_MAX_RESULTS constant and aligned docs formatting for SearchConfig usage
+- Decision: Keep SearchConfig default unchanged (library stays at 15) and centralize CLI max in main
+- Commands: apply_patch (rust-fts5-indexer/src/main.rs, docs/learn/06-main_rs.md)
+- Open questions: None
+2026-01-27 21:29:49 -0300
+- Step: Re-run quality gates after search config constant change
+- Result: fmt, clippy pedantic, 5x test loop, and release build all passed
+- Decision: Record commands in tests.json and proceed to spec/progress updates and release prep
+- Commands: cargo fmt; cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic; for i in {1..5}; do echo "Run $i/5"; cargo test --quiet || exit 1; done; cargo build --release
+- Open questions: None
+2026-01-27 21:38:25 -0300
+- Step: Bump version to 0.11.3 and update release docs
+- Result: Updated Cargo.toml, README badge, CLAUDE.md, changelogs, and version references across docs; rebuilt release binary
+- Decision: Release date set to 2026-01-28 per guidance; keep historical 0.11.2 references in benchmarks/notes
+- Commands: apply_patch (Cargo.toml, CHANGELOG.md, rust-fts5-indexer/CHANGELOG.md, README.md, CLAUDE.md, docs/*); cargo build --release
+- Open questions: None
+2026-01-27 21:39:10 -0300
+- Step: Review git diff summary before release commit
+- Result: 29 files changed, focused on clippy pedantic fixes, docs sync, and version bump artifacts
+- Decision: Proceed to finalize ENGINEERING_SPEC success criteria and prepare release commit/tag
+- Commands: git diff --stat
+- Open questions: None
+2026-01-27 21:40:05 -0300
+- Step: Verify release-tools version check after version bump
+- Result: release-tools check-version passed (README badge matches Cargo.toml 0.11.3)
+- Decision: Proceed with release commit/tag/push
+- Commands: cargo run --bin release-tools -- check-version
+- Open questions: None

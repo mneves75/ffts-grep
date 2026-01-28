@@ -55,7 +55,7 @@ impl<'a> Searcher<'a> {
     /// **Phase B**: FTS5 BM25 search for remaining slots
     ///
     /// This two-phase approach solves FTS5's token matching limitation:
-    /// FTS5 tokenizes "01-introduction.md" as ["01", "introduction"], so
+    /// FTS5 tokenizes `01-introduction.md` as `["01", "introduction"]`, so
     /// query "intro" doesn't match "introduction" (exact token match only).
     /// SQL LIKE '%intro%' bypasses tokenization and finds substring matches.
     ///
@@ -93,8 +93,10 @@ impl<'a> Searcher<'a> {
 
         // Phase B: FTS5 BM25 for remaining slots (content/path matches)
         if results.len() < max {
-            // Request more results to account for deduplication
-            let fts_limit = (max - results.len() + seen.len()) as u32;
+            // Request more results to account for deduplication.
+            // This is bounded by max_results (u32), but stay defensive.
+            let fts_limit =
+                u32::try_from(max.saturating_sub(results.len()) + seen.len()).unwrap_or(u32::MAX);
             let fts_results = self.db.search(&sanitized, self.config.paths_only, fts_limit)?;
 
             for result in fts_results {
@@ -119,11 +121,12 @@ impl<'a> Searcher<'a> {
     ///
     /// **Auto-prefix**: Trailing `-` or `_` triggers FTS5 prefix query:
     /// - `"01-"` → `"01*"` (matches "01-introduction", "01-chapter")
-    /// - `"test_"` → `"test*"` (matches "test_utils", "test_config")
+    /// - `"test_"` → `"test*"` (matches "`test_utils`", "`test_config`")
     ///
     /// # Performance
     /// Called for every search query. Marked `#[inline]` for hot-path optimization.
     #[inline]
+    #[must_use]
     pub fn sanitize_query(query: &str) -> String {
         let trimmed = query.trim();
 
@@ -145,9 +148,8 @@ impl<'a> Searcher<'a> {
 
         for ch in trimmed.chars() {
             let mapped = match ch {
-                '*' | '"' | '(' | ')' | ':' | '^' | '@' | '~' => ' ',
-                '-' | '_' | '.' | '/' | '\\' | '[' | ']' | '{' | '}' | '+' | '!' | '=' | '>'
-                | '<' | '&' | '|' => ' ',
+                '*' | '"' | '(' | ')' | ':' | '^' | '@' | '~' | '-' | '_' | '.' | '/' | '\\'
+                | '[' | ']' | '{' | '}' | '+' | '!' | '=' | '>' | '<' | '&' | '|' => ' ',
                 ch if ch.is_whitespace() => ' ',
                 _ => ch,
             };
@@ -512,7 +514,7 @@ mod tests {
 
         assert!(!results.is_empty());
         // First result (filename match) should have priority rank
-        assert_eq!(results[0].rank, -1000.0);
+        assert!((results[0].rank + 1000.0).abs() < f64::EPSILON);
     }
 
     #[test]

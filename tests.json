@@ -1,6 +1,22 @@
 {
   "tests_run": [
     {
+      "command": "cargo fmt",
+      "result": "passed"
+    },
+    {
+      "command": "cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic",
+      "result": "passed"
+    },
+    {
+      "command": "for i in {1..5}; do echo \"Run $i/5\"; cargo test --quiet || exit 1; done",
+      "result": "passed"
+    },
+    {
+      "command": "cargo build --release",
+      "result": "passed"
+    },
+    {
       "command": "cargo bench 2>&1 | tee final-benchmarks.txt",
       "result": "passed"
     },
@@ -10,5 +26,5 @@
     }
   ],
   "status": "passed",
-  "last_updated": "2026-01-27T20:58:45-03:00"
+  "last_updated": "2026-01-27T21:38:42-0300"
 }

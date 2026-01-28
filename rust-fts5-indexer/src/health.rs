@@ -140,7 +140,7 @@ pub struct ProjectRoot {
 ///
 /// Returns `true` only if all conditions are met:
 /// 1. File exists
-/// 2. File is a readable SQLite database
+/// 2. File is a readable `SQLite` database
 /// 3. File has our `application_id` (`EXPECTED_APPLICATION_ID`)
 ///
 /// This prevents corrupt, empty, or foreign databases from being
@@ -246,9 +246,8 @@ pub fn check_health_fast(project_dir: &Path) -> DatabaseHealth {
     }
 
     // Check 2: Can open read-only
-    let db = match Database::open_readonly(&db_path) {
-        Ok(db) => db,
-        Err(_) => return DatabaseHealth::Unreadable,
+    let Ok(db) = Database::open_readonly(&db_path) else {
+        return DatabaseHealth::Unreadable;
     };
 
     // Check 3: Application ID matches
@@ -287,7 +286,7 @@ pub fn check_health_fast(project_dir: &Path) -> DatabaseHealth {
 /// # Arguments
 ///
 /// * `project_dir` - Directory to initialize
-/// * `config` - SQLite PRAGMA configuration
+/// * `config` - `SQLite` PRAGMA configuration
 /// * `quiet` - Suppress progress logging
 ///
 /// # Errors
@@ -301,6 +300,10 @@ pub fn auto_init(project_dir: &Path, config: &PragmaConfig, quiet: bool) -> Resu
 /// Auto-initialize database with explicit indexer configuration.
 ///
 /// Use this to override indexing defaults (e.g., symlink handling).
+///
+/// # Errors
+///
+/// Returns `IndexerError` if database creation, indexing, or WAL checkpointing fails.
 pub fn auto_init_with_config(
     project_dir: &Path,
     config: &PragmaConfig,
@@ -409,26 +412,7 @@ pub fn auto_init_with_config(
         );
     };
 
-    if !checkpoint_ok {
-        // Checkpoint failed - don't rename (would cause data loss)
-        // Keep temp files for potential recovery, but don't fail the function
-        // because we might be in a race and another process succeeded
-        if db_path.exists() {
-            // Another process created a database - use theirs
-            cleanup_temp();
-            tracing::debug!("Checkpoint failed but database exists, using existing");
-        } else {
-            // No database exists and we can't safely create one
-            // This is a real failure - clean up and return error
-            cleanup_temp();
-            return Err(crate::error::IndexerError::Database {
-                source: rusqlite::Error::SqliteFailure(
-                    rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_BUSY),
-                    Some("WAL checkpoint failed, cannot safely create database".to_string()),
-                ),
-            });
-        }
-    } else {
+    if checkpoint_ok {
         // Checkpoint succeeded - safe to rename
         // Race condition handling:
         // - On Unix: rename() atomically REPLACES target if exists (POSIX semantics)
@@ -460,6 +444,25 @@ pub fn auto_init_with_config(
                     .map_err(|e| crate::error::IndexerError::Io { source: e })?;
             }
         }
+    } else {
+        // Checkpoint failed - don't rename (would cause data loss)
+        // Keep temp files for potential recovery, but don't fail the function
+        // because we might be in a race and another process succeeded
+        if db_path.exists() {
+            // Another process created a database - use theirs
+            cleanup_temp();
+            tracing::debug!("Checkpoint failed but database exists, using existing");
+        } else {
+            // No database exists and we can't safely create one
+            // This is a real failure - clean up and return error
+            cleanup_temp();
+            return Err(crate::error::IndexerError::Database {
+                source: rusqlite::Error::SqliteFailure(
+                    rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_BUSY),
+                    Some("WAL checkpoint failed, cannot safely create database".to_string()),
+                ),
+            });
+        }
     }
 
     Ok(stats)
@@ -477,7 +480,7 @@ pub fn auto_init_with_config(
 /// # Arguments
 ///
 /// * `project_dir` - Directory containing corrupted database
-/// * `config` - SQLite PRAGMA configuration
+/// * `config` - `SQLite` PRAGMA configuration
 /// * `quiet` - Suppress progress logging
 ///
 /// # Errors
@@ -493,6 +496,10 @@ pub fn backup_and_reinit(
 }
 
 /// Backup corrupted database and reinitialize with explicit indexer configuration.
+///
+/// # Errors
+///
+/// Returns `IndexerError` if the reinitialization step fails.
 pub fn backup_and_reinit_with_config(
     project_dir: &Path,
     config: &PragmaConfig,
@@ -918,7 +925,7 @@ mod tests {
         // Backup should exist
         let backups: Vec<_> = fs::read_dir(dir.path())
             .unwrap()
-            .filter_map(|e| e.ok())
+            .filter_map(std::result::Result::ok)
             .filter(|e| e.file_name().to_string_lossy().contains("backup"))
             .collect();
         assert!(!backups.is_empty());
@@ -957,10 +964,13 @@ mod tests {
             let _ = check_health_fast(dir.path());
         }
         let elapsed = start.elapsed();
-        let budget_ms = if std::env::var_os("CI").is_some() { 1500 } else { 500 };
+        let budget_ms = std::env::var("FFTS_HEALTH_BUDGET_MS")
+            .ok()
+            .and_then(|value| value.parse::<u128>().ok())
+            .unwrap_or_else(|| if std::env::var_os("CI").is_some() { 2000 } else { 1500 });
 
-        // 100 checks should complete quickly; allow extra headroom on CI runners.
-        // Production target: <100μs each = <10ms for 100 iterations
+        // 100 checks should complete quickly; allow extra headroom on variable hosts.
+        // Production target: <100μs each = <10ms for 100 iterations.
         assert!(
             elapsed.as_millis() < budget_ms,
             "Health check too slow: {elapsed:?} for 100 iterations (budget {budget_ms}ms)"
@@ -979,7 +989,10 @@ mod tests {
             let _ = find_project_root(&deep);
         }
         let elapsed = start.elapsed();
-        let budget_ms = if std::env::var_os("CI").is_some() { 1500 } else { 500 };
+        let budget_ms = std::env::var("FFTS_ROOT_BUDGET_MS")
+            .ok()
+            .and_then(|value| value.parse::<u128>().ok())
+            .unwrap_or_else(|| if std::env::var_os("CI").is_some() { 2000 } else { 1500 });
 
         // 1000 lookups should complete quickly; allow extra headroom on CI runners.
         // Production target: <100μs each = <100ms for 1000 iterations

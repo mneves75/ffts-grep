@@ -5,8 +5,7 @@ use std::path::PathBuf;
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."))
+        .map_or_else(|| PathBuf::from("."), PathBuf::from)
 }
 
 #[test]

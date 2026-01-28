@@ -79,8 +79,7 @@ fn main() -> ExitCode {
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
-        .map(Path::to_path_buf)
-        .unwrap_or_else(|| PathBuf::from("."))
+        .map_or_else(|| PathBuf::from("."), Path::to_path_buf)
 }
 
 fn cargo_manifest_path() -> PathBuf {
@@ -172,7 +171,7 @@ fn extract_section(contents: &str, version: &str) -> Option<String> {
     let header = format!("## [{version}]");
     let start = contents.find(&header)?;
     let rest = &contents[start + header.len()..];
-    let end = rest.find("\n## [").map(|idx| start + header.len() + idx).unwrap_or(contents.len());
+    let end = rest.find("\n## [").map_or(contents.len(), |idx| start + header.len() + idx);
 
     Some(contents[start..end].trim_end().to_string())
 }

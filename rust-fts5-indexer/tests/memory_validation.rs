@@ -20,6 +20,17 @@ use std::fs;
 use std::process::Command;
 use tempfile::tempdir;
 
+#[allow(clippy::cast_precision_loss)]
+fn bytes_to_mb(bytes: u64) -> f64 {
+    bytes as f64 / 1_000_000.0
+}
+
+#[cfg(not(target_os = "macos"))]
+#[allow(clippy::cast_precision_loss)]
+fn kb_to_mb(kb: u64) -> f64 {
+    kb as f64 / 1000.0
+}
+
 /// Find the ffts-grep binary (release or debug).
 fn find_binary() -> Option<std::path::PathBuf> {
     let release = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("target/release/ffts-grep");
@@ -40,14 +51,11 @@ fn find_binary() -> Option<std::path::PathBuf> {
 /// README claims ~16MB for 10K file indexing.
 /// We use 50MB as a generous upper bound to avoid flaky tests.
 #[test]
-#[ignore]
+#[ignore = "requires release binary and long-running RSS measurement"]
 fn test_index_memory_claim() {
-    let binary = match find_binary() {
-        Some(b) => b,
-        None => {
-            eprintln!("Binary not found. Run `cargo build --release` first.");
-            return;
-        }
+    let Some(binary) = find_binary() else {
+        eprintln!("Binary not found. Run `cargo build --release` first.");
+        return;
     };
 
     let dir = tempdir().unwrap();
@@ -77,7 +85,7 @@ fn test_index_memory_claim() {
         // Format: "      16384  maximum resident set size"
         if let Some(line) = stderr.lines().find(|l| l.contains("maximum resident set size")) {
             let bytes: u64 = line.split_whitespace().next().unwrap_or("0").parse().unwrap_or(0);
-            let mb = bytes as f64 / 1_000_000.0;
+            let mb = bytes_to_mb(bytes);
             eprintln!("Peak RSS: {mb:.1} MB");
 
             assert!(mb < 50.0, "Index memory exceeds 50MB limit: {mb:.1} MB (README claims ~16MB)");
@@ -101,7 +109,7 @@ fn test_index_memory_claim() {
         // Linux format: "Maximum resident set size (kbytes): 16384"
         if let Some(line) = stderr.lines().find(|l| l.contains("Maximum resident set size")) {
             let kb: u64 = line.rsplit(':').next().unwrap_or("0").trim().parse().unwrap_or(0);
-            let mb = kb as f64 / 1000.0;
+            let mb = kb_to_mb(kb);
             eprintln!("Peak RSS: {mb:.1} MB");
 
             assert!(mb < 50.0, "Index memory exceeds 50MB limit: {mb:.1} MB (README claims ~16MB)");
@@ -116,14 +124,11 @@ fn test_index_memory_claim() {
 /// README claims ~9MB for search-only operations.
 /// We use 20MB as a generous upper bound to avoid flaky tests.
 #[test]
-#[ignore]
+#[ignore = "requires release binary and long-running RSS measurement"]
 fn test_search_memory_claim() {
-    let binary = match find_binary() {
-        Some(b) => b,
-        None => {
-            eprintln!("Binary not found. Run `cargo build --release` first.");
-            return;
-        }
+    let Some(binary) = find_binary() else {
+        eprintln!("Binary not found. Run `cargo build --release` first.");
+        return;
     };
 
     let dir = tempdir().unwrap();
@@ -159,7 +164,7 @@ fn test_search_memory_claim() {
 
         if let Some(line) = stderr.lines().find(|l| l.contains("maximum resident set size")) {
             let bytes: u64 = line.split_whitespace().next().unwrap_or("0").parse().unwrap_or(0);
-            let mb = bytes as f64 / 1_000_000.0;
+            let mb = bytes_to_mb(bytes);
             eprintln!("Peak RSS: {mb:.1} MB");
 
             assert!(mb < 20.0, "Search memory exceeds 20MB limit: {mb:.1} MB (README claims ~9MB)");
@@ -181,7 +186,7 @@ fn test_search_memory_claim() {
 
         if let Some(line) = stderr.lines().find(|l| l.contains("Maximum resident set size")) {
             let kb: u64 = line.rsplit(':').next().unwrap_or("0").trim().parse().unwrap_or(0);
-            let mb = kb as f64 / 1000.0;
+            let mb = kb_to_mb(kb);
             eprintln!("Peak RSS: {mb:.1} MB");
 
             assert!(mb < 20.0, "Search memory exceeds 20MB limit: {mb:.1} MB (README claims ~9MB)");

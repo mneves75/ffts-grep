@@ -89,3 +89,15 @@
 ## Iteration 16: Benchmark Doc Alignment
 
 - [x] Update clippy pedantic summary to reflect tracked benchmark artifacts
+
+## Iteration 17: Search Config Constant + Verification
+
+- [x] Centralize CLI max results via DEFAULT_MAX_RESULTS in main.rs
+- [x] Sync main.rs tutorial snippet formatting for SearchConfig usage
+- [x] Re-run fmt, clippy pedantic, 5x test loop, and release build
+
+## Iteration 18: Release Prep 0.11.3
+
+- [x] Bump version to 0.11.3 and update README badge + CLAUDE.md
+- [x] Promote Unreleased notes to 0.11.3 in changelogs
+- [x] Refresh version references in docs to 0.11.3

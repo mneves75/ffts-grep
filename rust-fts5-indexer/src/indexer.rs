@@ -380,9 +380,8 @@ impl Indexer {
     /// Called for every file during directory walk. Marked `#[inline]` for hot-path optimization.
     #[inline]
     fn is_database_file(path: &Path) -> bool {
-        let file_name = match path.file_name().and_then(|name| name.to_str()) {
-            Some(name) => name,
-            None => return false,
+        let Some(file_name) = path.file_name().and_then(|name| name.to_str()) else {
+            return false;
         };
 
         // Skip auxiliary WAL files
@@ -402,12 +401,14 @@ impl Indexer {
             return true;
         }
 
-        // Skip by extension
-        if file_name.ends_with(".db")
-            || file_name.ends_with(".sqlite")
-            || file_name.ends_with(".sqlite3")
-        {
-            return true;
+        // Skip by extension (case-insensitive)
+        if let Some(ext) = path.extension().and_then(|ext| ext.to_str()) {
+            if ext.eq_ignore_ascii_case("db")
+                || ext.eq_ignore_ascii_case("sqlite")
+                || ext.eq_ignore_ascii_case("sqlite3")
+            {
+                return true;
+            }
         }
 
         false
@@ -444,12 +445,9 @@ impl Indexer {
     }
 
     fn checked_i64_from_u64(value: u64, label: &'static str) -> Result<i64> {
-        if value > i64::MAX as u64 {
-            return Err(IndexerError::Io {
-                source: std::io::Error::other(format!("{label} out of range: {value}")),
-            });
-        }
-        Ok(value as i64)
+        i64::try_from(value).map_err(|_| IndexerError::Io {
+            source: std::io::Error::other(format!("{label} out of range: {value}")),
+        })
     }
 }
 
@@ -469,6 +467,10 @@ pub fn atomic_reindex(root: &Path, config: &crate::db::PragmaConfig) -> Result<I
 /// Atomic reindex with explicit indexer configuration.
 ///
 /// Use this when you need to override defaults such as symlink handling.
+///
+/// # Errors
+///
+/// Returns `IndexerError` if database creation, indexing, or filesystem operations fail.
 pub fn atomic_reindex_with_config(
     root: &Path,
     config: &crate::db::PragmaConfig,

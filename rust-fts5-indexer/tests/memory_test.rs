@@ -9,7 +9,7 @@ fn get_rss_bytes() -> u64 {
         RefreshKind::nothing().with_processes(ProcessRefreshKind::nothing().with_memory()),
     );
     sys.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);
-    sys.process(pid).map(|p| p.memory()).unwrap_or(0)
+    sys.process(pid).map_or(0, sysinfo::Process::memory)
 }
 
 /// Verify sysinfo works on this platform and returns reasonable values.
@@ -18,13 +18,13 @@ fn test_memory_info_available() {
     let rss = get_rss_bytes();
 
     // RSS should be > 0 (we're running a test process)
-    assert!(rss > 0, "RSS should be positive, got {}", rss);
+    assert!(rss > 0, "RSS should be positive, got {rss}");
 
     // RSS should be < 1GB for a simple test (sanity check)
-    assert!(rss < 1_000_000_000, "RSS suspiciously large: {} bytes", rss);
+    assert!(rss < 1_000_000_000, "RSS suspiciously large: {rss} bytes");
 
     // RSS should be > 1MB (reasonable minimum for any Rust process)
-    assert!(rss > 1_000_000, "RSS suspiciously small: {} bytes", rss);
+    assert!(rss > 1_000_000, "RSS suspiciously small: {rss} bytes");
 }
 
 /// Verify memory increases after allocating data.
@@ -54,9 +54,7 @@ fn test_memory_increases_with_allocation() {
     // but should never be less
     assert!(
         after >= before,
-        "Memory should not decrease after allocation: before={}, after={}",
-        before,
-        after
+        "Memory should not decrease after allocation: before={before}, after={after}"
     );
 
     // If we allocated 10MB and touched it, we expect at least some increase
@@ -66,8 +64,7 @@ fn test_memory_increases_with_allocation() {
         // Good: we can measure memory changes
         assert!(
             delta < 100_000_000,
-            "Memory delta suspiciously large: {} bytes (expected ~10MB)",
-            delta
+            "Memory delta suspiciously large: {delta} bytes (expected ~10MB)"
         );
     }
 }
