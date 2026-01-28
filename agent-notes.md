@@ -650,3 +650,9 @@
 - Decision: Proceed to release commit/tag/push
 - Commands: cargo run --bin release-tools -- check-version
 - Open questions: None
+2026-01-27 23:03:31 -0300
+- Step: Post-release quality gates for 0.11.4
+- Result: fmt, clippy pedantic, 3x test loop, and release build passed
+- Decision: Record commands in tests.json; no further code changes needed
+- Commands: cargo fmt; cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic; for i in {1..3}; do echo "Run $i/3"; cargo test --quiet || exit 1; done; cargo build --release
+- Open questions: None
