@@ -106,3 +106,8 @@
 
 - [x] Run temp-project init/index/search smoke test
 - [x] Run release-tools checklist verification
+
+## Iteration 20: Refresh Guard Smoke Validation
+
+- [x] Verify refresh without query fails (CLI + stdin)
+- [x] Verify refresh with query succeeds
