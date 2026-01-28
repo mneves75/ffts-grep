@@ -146,3 +146,7 @@
 ## Iteration 28: Tag Integrity Check
 
 - [x] Verified v0.11.4 tag contains correct Cargo.toml version, README badge, and changelog section
+
+## Iteration 29: Tag Distance Audit
+
+- [x] Verified HEAD is 6 commits ahead of v0.11.4 (logging/audit trail only)
