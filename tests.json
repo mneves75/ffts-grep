@@ -17,6 +17,14 @@
       "result": "passed"
     },
     {
+      "command": "cargo run --bin ffts-grep -- --project-dir <tmp> --quiet init --force; cargo run --bin ffts-grep -- --project-dir <tmp> --quiet index; cargo run --bin ffts-grep -- --project-dir <tmp> --quiet search main",
+      "result": "passed"
+    },
+    {
+      "command": "cargo run --bin release-tools -- checklist --verify",
+      "result": "passed"
+    },
+    {
       "command": "cargo bench 2>&1 | tee final-benchmarks.txt",
       "result": "passed"
     },
@@ -26,5 +34,5 @@
     }
   ],
   "status": "passed",
-  "last_updated": "2026-01-27T21:38:42-0300"
+  "last_updated": "2026-01-27T21:45:51-0300"
 }
