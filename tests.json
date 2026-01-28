@@ -25,6 +25,10 @@
       "result": "passed"
     },
     {
+      "command": "cargo run --bin ffts-grep -- --project-dir <tmp> --refresh (expect failure); printf '{\"query\":\"   \",\"refresh\":true}' | cargo run --bin ffts-grep -- --project-dir <tmp> (expect failure); cargo run --bin ffts-grep -- --project-dir <tmp> --quiet --refresh search main",
+      "result": "passed"
+    },
+    {
       "command": "cargo bench 2>&1 | tee final-benchmarks.txt",
       "result": "passed"
     },
@@ -34,5 +38,5 @@
     }
   ],
   "status": "passed",
-  "last_updated": "2026-01-27T21:45:51-0300"
+  "last_updated": "2026-01-27T21:49:11-0300"
 }

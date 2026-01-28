@@ -632,3 +632,9 @@
 - Decision: Release validation complete; no repo artifacts created
 - Commands: cargo run --bin ffts-grep -- --project-dir <tmp> --quiet init --force; cargo run --bin ffts-grep -- --project-dir <tmp> --quiet index; cargo run --bin ffts-grep -- --project-dir <tmp> --quiet search main; cargo run --bin release-tools -- checklist --verify
 - Open questions: None
+2026-01-27 21:49:00 -0300
+- Step: Manual refresh validation smoke test
+- Result: refresh without query and stdin refresh with empty query both rejected; refresh with query succeeded
+- Decision: Behavior matches spec; log evidence in tests.json
+- Commands: cargo run --bin ffts-grep -- --project-dir <tmp> --refresh; printf '{"query":"   ","refresh":true}\n' | cargo run --bin ffts-grep -- --project-dir <tmp>; cargo run --bin ffts-grep -- --project-dir <tmp> --quiet --refresh search main
+- Open questions: None
