@@ -716,3 +716,9 @@
 - Decision: Record commands in tests.json and progress.md
 - Commands: printf '{"query":"main","refresh":true}' | ./target/release/ffts-grep --project-dir <tmp>; ./target/release/ffts-grep --project-dir <tmp> doctor --json; python3 JSON parse
 - Open questions: None
+2026-01-27 23:24:58 -0300
+- Step: Release binary JSON output + no-auto-init guard validation
+- Result: --no-auto-init search failed as expected without DB; JSON output parsed with results
+- Decision: Record commands in tests.json and progress.md
+- Commands: ./target/release/ffts-grep --project-dir <tmp> --no-auto-init search main (expect failure); ./target/release/ffts-grep --project-dir <tmp> --quiet search main --format json; python3 JSON parse
+- Open questions: None

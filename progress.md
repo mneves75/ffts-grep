@@ -159,3 +159,8 @@
 
 - [x] Verify release binary stdin JSON refresh path
 - [x] Validate doctor --json output parses
+
+## Iteration 32: Release JSON Output + No-Auto-Init Guard
+
+- [x] Validate release binary --format json output parses
+- [x] Verify --no-auto-init search fails without DB
