@@ -51,8 +51,12 @@
     {
       "command": "cargo bench 2>&1 | tee baseline-benchmarks.txt (v0.11.2 worktree)",
       "result": "passed"
+    },
+    {
+      "command": "cargo run --bin release-tools -- release-notes --version 0.11.4",
+      "result": "passed"
     }
   ],
   "status": "passed",
-  "last_updated": "2026-01-27T23:11:03-0300"
+  "last_updated": "2026-01-27T23:12:47-0300"
 }

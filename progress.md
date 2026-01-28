@@ -129,3 +129,8 @@
 ## Iteration 24: Release Binary Smoke
 
 - [x] Run release binary --version/--help and temp-project init/index/search
+
+## Iteration 25: Release Tools Verification
+
+- [x] Run release-tools checklist --verify
+- [x] Generate release-notes for 0.11.4
