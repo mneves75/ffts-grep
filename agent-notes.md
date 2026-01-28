@@ -620,3 +620,9 @@
 - Decision: Proceed with release commit/tag/push
 - Commands: cargo run --bin release-tools -- check-version
 - Open questions: None
+2026-01-27 21:41:37 -0300
+- Step: Commit and publish 0.11.3 release artifacts
+- Result: Commit "release: prepare 0.11.3" pushed; tag v0.11.3 created and pushed
+- Decision: Release complete; follow-up manual smoke test optional per spec
+- Commands: git add -A; git commit -m "release: prepare 0.11.3"; git tag v0.11.3; git push; git push origin v0.11.3
+- Open questions: None
