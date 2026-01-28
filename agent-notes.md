@@ -674,3 +674,9 @@
 - Decision: Stage tracking updates and commit
 - Commands: python3 inline update tests.json; apply_patch progress.md
 - Open questions: None
+2026-01-27 23:12:57 -0300
+- Step: Verify release-tools checklist and release-notes extraction
+- Result: checklist --verify passed; release-notes for 0.11.4 generated successfully
+- Decision: Record verification in tests.json and progress log
+- Commands: cargo run --bin release-tools -- checklist --verify; cargo run --bin release-tools -- release-notes --version 0.11.4
+- Open questions: None
