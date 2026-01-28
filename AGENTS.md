@@ -6,3 +6,4 @@ This repository uses `CLAUDE.md` as the primary agent guide. Read that file firs
 
 - `./deploy.sh` installs to `~/.local/bin` (default) for general CLI usage.
 - `./deploy_cc.sh` installs to `~/.claude/ffts-grep` and updates Claude Code settings.
+Ensure the install directory is on your `PATH` when using `deploy.sh`.

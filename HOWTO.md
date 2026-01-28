@@ -36,6 +36,8 @@ This will:
 3. Re-sign on macOS (to prevent SIGKILL)
 4. Verify the install via `ffts-grep --version`
 
+Ensure `~/.local/bin` is on your `PATH` so `ffts-grep` is available in new shells.
+
 ### 3. Deploy to Claude Code (optional)
 
 If you want Claude Code integration, use the Claude deploy script:

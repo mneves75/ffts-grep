@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Deployment**: Added `deploy.sh` for local CLI installs (defaults to `~/.local/bin`, supports custom install dir)
+- **Docs**: Documented `deploy.sh` vs `deploy_cc.sh` and added `AGENTS.md` pointer
 
 ### Fixed
 - Nothing yet.
