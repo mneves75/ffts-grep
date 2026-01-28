@@ -692,3 +692,9 @@
 - Decision: Update tests.json timestamp for evidence
 - Commands: for i in {1..5}; do echo "Run $i/5"; cargo test --quiet || exit 1; done
 - Open questions: None
+2026-01-27 23:18:26 -0300
+- Step: Verify v0.11.4 tag integrity against release artifacts
+- Result: Tag contains Cargo.toml 0.11.4, README badge 0.11.4, and changelog section 0.11.4
+- Decision: Tag integrity confirmed; no retag needed
+- Commands: git show v0.11.4:rust-fts5-indexer/Cargo.toml | rg "^version = \"0.11.4\""; git show v0.11.4:README.md | rg "badge/version-0.11.4"; git show v0.11.4:CHANGELOG.md | rg "^## \[0.11.4\]"
+- Open questions: None
