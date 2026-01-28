@@ -656,3 +656,21 @@
 - Decision: Record commands in tests.json; no further code changes needed
 - Commands: cargo fmt; cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic; for i in {1..3}; do echo "Run $i/3"; cargo test --quiet || exit 1; done; cargo build --release
 - Open questions: None
+2026-01-27 23:09:52 -0300
+- Step: Run Criterion benchmarks on 0.11.4 and compare to baseline
+- Result: Benchmarks completed; comparison shows no regressions > 5% (indexing + memory improved, minor changes within noise)
+- Decision: Append run timestamp to final-benchmarks.txt and record in tests.json
+- Commands: cargo bench 2>&1 | tee final-benchmarks.txt; python3 inline comparator; append timestamp to final-benchmarks.txt
+- Open questions: None
+2026-01-27 23:10:24 -0300
+- Step: Release binary smoke test for 0.11.4
+- Result: release binary built and executed; --version/--help OK; init/index/search worked in temp dir
+- Decision: Release binary verified; no further action required
+- Commands: cargo build --release; ./target/release/ffts-grep --version; ./target/release/ffts-grep --help; ./target/release/ffts-grep --project-dir <tmp> --quiet init --force; ./target/release/ffts-grep --project-dir <tmp> --quiet index; ./target/release/ffts-grep --project-dir <tmp> --quiet search main
+- Open questions: None
+2026-01-27 23:11:17 -0300
+- Step: Update tracking after benchmark + release binary smoke
+- Result: tests.json timestamps updated; progress.md notes for benchmarks and release binary smoke added
+- Decision: Stage tracking updates and commit
+- Commands: python3 inline update tests.json; apply_patch progress.md
+- Open questions: None
