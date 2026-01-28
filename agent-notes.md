@@ -710,3 +710,9 @@
 - Decision: Record command in tests.json and progress.md
 - Commands: ./target/release/ffts-grep --project-dir <tmp> --quiet init --force; ./target/release/ffts-grep --project-dir <tmp> --quiet index; ./target/release/ffts-grep --project-dir <tmp> --quiet doctor
 - Open questions: None
+2026-01-27 23:23:22 -0300
+- Step: Release-binary stdin refresh + doctor JSON validation
+- Result: stdin JSON refresh returned expected result; doctor --json output parsed successfully
+- Decision: Record commands in tests.json and progress.md
+- Commands: printf '{"query":"main","refresh":true}' | ./target/release/ffts-grep --project-dir <tmp>; ./target/release/ffts-grep --project-dir <tmp> doctor --json; python3 JSON parse
+- Open questions: None
