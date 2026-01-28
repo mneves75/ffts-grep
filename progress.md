@@ -85,3 +85,7 @@
 - [x] Run baseline benchmarks on v0.11.2 tag and refresh baseline-benchmarks.txt
 - [x] Run final benchmarks on current code and capture final-benchmarks.txt
 - [x] Compare baseline vs final (no regressions > 5%)
+
+## Iteration 16: Benchmark Doc Alignment
+
+- [x] Update clippy pedantic summary to reflect tracked benchmark artifacts

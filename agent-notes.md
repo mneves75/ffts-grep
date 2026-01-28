@@ -584,3 +584,9 @@
 - Decision: Replace stale baseline-benchmarks.txt and record final-benchmarks.txt for evidence
 - Commands: cargo bench 2>&1 | tee final-benchmarks.txt; git worktree add /tmp/ffts-baseline-v0.11.2 v0.11.2; cargo bench 2>&1 | tee baseline-benchmarks.txt; python3 comparison script
 - Open questions: None
+2026-01-27 21:01:05 -0300
+- Step: Align clippy pedantic summary with benchmark artifacts
+- Result: Updated CLIPPY_PEDANTIC_DIFF_SUMMARY.md to mark benchmark files as tracked and add final-benchmarks reference
+- Decision: Keep historical summaries accurate to current repository state
+- Commands: apply_patch (rust-fts5-indexer/CLIPPY_PEDANTIC_DIFF_SUMMARY.md, progress.md)
+- Open questions: None
