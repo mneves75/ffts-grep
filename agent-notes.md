@@ -698,3 +698,9 @@
 - Decision: Tag integrity confirmed; no retag needed
 - Commands: git show v0.11.4:rust-fts5-indexer/Cargo.toml | rg "^version = \"0.11.4\""; git show v0.11.4:README.md | rg "badge/version-0.11.4"; git show v0.11.4:CHANGELOG.md | rg "^## \[0.11.4\]"
 - Open questions: None
+2026-01-27 23:19:45 -0300
+- Step: Verify tag cleanliness and HEAD distance from v0.11.4
+- Result: repo clean; HEAD is 6 commits ahead of v0.11.4 (all logging/verification commits)
+- Decision: No retag needed; tag points to release content while HEAD carries audit trail
+- Commands: git describe --tags --dirty; git rev-list --count v0.11.4..HEAD; git log --oneline --decorate -n 5
+- Open questions: None
