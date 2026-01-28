@@ -45,10 +45,14 @@
       "result": "passed"
     },
     {
+      "command": "./target/release/ffts-grep --version; ./target/release/ffts-grep --help; ./target/release/ffts-grep --project-dir <tmp> --quiet init --force; ./target/release/ffts-grep --project-dir <tmp> --quiet index; ./target/release/ffts-grep --project-dir <tmp> --quiet search main",
+      "result": "passed"
+    },
+    {
       "command": "cargo bench 2>&1 | tee baseline-benchmarks.txt (v0.11.2 worktree)",
       "result": "passed"
     }
   ],
   "status": "passed",
-  "last_updated": "2026-01-27T23:03:16-0300"
+  "last_updated": "2026-01-27T23:11:03-0300"
 }

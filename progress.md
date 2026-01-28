@@ -120,3 +120,12 @@
 ## Iteration 22: Post-Release Quality Gates
 
 - [x] Run fmt, clippy pedantic, 3x test loop, and release build for 0.11.4
+
+## Iteration 23: Benchmark Refresh (0.11.4)
+
+- [x] Run Criterion benchmarks and append timestamp
+- [x] Compare baseline vs final (no regressions > 5%)
+
+## Iteration 24: Release Binary Smoke
+
+- [x] Run release binary --version/--help and temp-project init/index/search
