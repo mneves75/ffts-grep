@@ -316,8 +316,9 @@ None. All clippy pedantic warnings resolved.
 
 ### Documentation
 - ✅ `agent-notes.md` - Engineering log (277 lines added)
-- ⭐ `ENGINEERING_SPEC.md` - Comprehensive spec (new file, untracked)
-- ⭐ `baseline-benchmarks.txt` - Benchmark baseline (new file, untracked)
+- ✅ `ENGINEERING_SPEC.md` - Comprehensive spec (tracked)
+- ✅ `baseline-benchmarks.txt` - Benchmark baseline (tracked)
+- ✅ `final-benchmarks.txt` - Benchmark final (tracked)
 
 ---
 
@@ -395,6 +396,7 @@ If preferring **atomic commits**, break into 3:
 - [ENGINEERING_SPEC.md](./ENGINEERING_SPEC.md) - Full planning document
 - [agent-notes.md](./agent-notes.md) - Engineering decision log
 - [baseline-benchmarks.txt](./baseline-benchmarks.txt) - Performance baseline
+- [final-benchmarks.txt](./final-benchmarks.txt) - Performance final
 - [Clippy Pedantic Lints](https://rust-lang.github.io/rust-clippy/master/index.html#pedantic)
 - [Rust Edition 2024 Guide](https://doc.rust-lang.org/edition-guide/rust-2024/)
 
