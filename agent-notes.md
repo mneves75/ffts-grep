@@ -686,3 +686,9 @@
 - Decision: Record verification in tests.json
 - Commands: cargo run --bin release-tools -- checklist --verify --version 0.11.4
 - Open questions: None
+2026-01-27 23:16:46 -0300
+- Step: Run full 5x test loop post-release
+- Result: All test suites passed 5/5 runs with no flakiness
+- Decision: Update tests.json timestamp for evidence
+- Commands: for i in {1..5}; do echo "Run $i/5"; cargo test --quiet || exit 1; done
+- Open questions: None
