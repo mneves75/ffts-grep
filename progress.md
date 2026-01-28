@@ -101,3 +101,8 @@
 - [x] Bump version to 0.11.3 and update README badge + CLAUDE.md
 - [x] Promote Unreleased notes to 0.11.3 in changelogs
 - [x] Refresh version references in docs to 0.11.3
+
+## Iteration 19: Post-Release Smoke Verification
+
+- [x] Run temp-project init/index/search smoke test
+- [x] Run release-tools checklist verification
