@@ -143,7 +143,7 @@ impl Database {
     ///
     /// This migration:
     /// 1. Adds `filename` column to `files` table if missing
-    /// 2. Populates filename from existing paths using Rust (SQLite lacks string functions)
+    /// 2. Populates filename from existing paths using Rust (`SQLite` lacks string functions)
     /// 3. Drops old FTS5 table and triggers (will be recreated by `init_schema`)
     ///
     /// Safe to call multiple times - only runs if migration is needed.
@@ -182,7 +182,7 @@ impl Database {
                 .map_err(|e| IndexerError::Database { source: e })?;
             stmt.query_map([], |row| Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?)))
                 .map_err(|e| IndexerError::Database { source: e })?
-                .filter_map(|r| r.ok())
+                .filter_map(std::result::Result::ok)
                 .collect()
         };
 

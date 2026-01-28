@@ -936,12 +936,12 @@ fn test_atomic_reindex_recovers_from_corrupt_db() {
 
 /// Verify conditional transaction threshold behavior (docs/state-machines/02-indexer-lifecycle.md).
 ///
-/// The indexer starts auto-committing files until TRANSACTION_THRESHOLD (50) is reached,
+/// The indexer starts auto-committing files until `TRANSACTION_THRESHOLD` (50) is reached,
 /// then switches to batched transaction mode. This test verifies:
 /// 1. Small batches (<50 files) complete without explicit transaction
 /// 2. Large batches (>50 files) use transaction batching for performance
 ///
-/// Note: We can't directly observe internal batch_count, but we can verify
+/// Note: We can't directly observe internal `batch_count`, but we can verify
 /// the behavioral contract through performance characteristics.
 #[test]
 fn test_conditional_transaction_threshold_behavior() {
@@ -983,7 +983,7 @@ fn test_conditional_transaction_threshold_behavior() {
     );
 }
 
-/// Verify health check state machine correctly identifies all DatabaseHealth variants
+/// Verify health check state machine correctly identifies all `DatabaseHealth` variants
 /// (docs/state-machines/04-search-flow.md).
 ///
 /// This tests the health check flow that gates search operations.
@@ -1020,7 +1020,8 @@ fn test_health_state_machine_transitions() {
     // State 4: WrongApplicationId - different app's database
     let dir_wrong_app = tempdir().unwrap();
     let conn = rusqlite::Connection::open(dir_wrong_app.path().join(DB_NAME)).unwrap();
-    conn.pragma_update(None, "application_id", 0xDEAD_BEEF_u32 as i32).unwrap();
+    let wrong_app_id = i32::from_ne_bytes(0xDEAD_BEEF_u32.to_ne_bytes());
+    conn.pragma_update(None, "application_id", wrong_app_id).unwrap();
     conn.execute("CREATE TABLE files (path TEXT PRIMARY KEY)", []).unwrap();
     drop(conn);
     let health = check_health_fast(dir_wrong_app.path());
@@ -1050,7 +1051,7 @@ fn test_health_state_machine_transitions() {
 
 /// Verify FTS5 trigger auto-sync behavior (docs/state-machines/03-database-states.md).
 ///
-/// The database uses triggers (files_ai, files_au, files_ad) to automatically
+/// The database uses triggers (`files_ai`, `files_au`, `files_ad`) to automatically
 /// keep the FTS5 index in sync with the files table.
 #[test]
 fn test_fts5_trigger_auto_sync() {
@@ -1080,10 +1081,10 @@ fn test_fts5_trigger_auto_sync() {
 
 /// Verify lazy invalidation via content hash (docs/state-machines/03-database-states.md).
 ///
-/// The upsert uses: WHERE excluded.content_hash != (SELECT content_hash ...)
+/// The upsert uses: WHERE `excluded.content_hash` != (SELECT `content_hash` ...)
 /// to skip FTS5 rebuilds when content is unchanged.
 ///
-/// Note: This test complements test_lazy_invalidation_skips_unchanged by testing
+/// Note: This test complements `test_lazy_invalidation_skips_unchanged` by testing
 /// directly at the database layer without going through the indexer.
 #[test]
 fn test_lazy_invalidation_via_db_layer() {
@@ -1095,7 +1096,8 @@ fn test_lazy_invalidation_via_db_layer() {
     let content = "unchanged content for hash test";
 
     // Initial insert
-    db.upsert_file("test.rs", content, 0, content.len() as i64).unwrap();
+    let content_len = i64::try_from(content.len()).expect("content length fits i64");
+    db.upsert_file("test.rs", content, 0, content_len).unwrap();
 
     // Get initial indexed_at
     let indexed_at1: i64 = db
@@ -1107,7 +1109,7 @@ fn test_lazy_invalidation_via_db_layer() {
     thread::sleep(std::time::Duration::from_secs(1));
 
     // Upsert with SAME content - lazy invalidation should skip update
-    db.upsert_file("test.rs", content, 1, content.len() as i64).unwrap();
+    db.upsert_file("test.rs", content, 1, content_len).unwrap();
 
     // indexed_at should NOT change when content is same (hash matches)
     let indexed_at2: i64 = db
@@ -1125,7 +1127,8 @@ fn test_lazy_invalidation_via_db_layer() {
 
     // Upsert with DIFFERENT content - should update
     let new_content = "modified content triggers update";
-    db.upsert_file("test.rs", new_content, 2, new_content.len() as i64).unwrap();
+    let new_content_len = i64::try_from(new_content.len()).expect("content length fits i64");
+    db.upsert_file("test.rs", new_content, 2, new_content_len).unwrap();
 
     let indexed_at3: i64 = db
         .conn()
@@ -1231,7 +1234,7 @@ fn test_exit_code_values() {
 /// query term only in directory path.
 ///
 /// This test validates the BM25 weighting: filename=100, path=50, content=1
-/// See: https://github.com/mneves75/ffts-grep/issues/filename-ranking
+/// See: <https://github.com/mneves75/ffts-grep/issues/filename-ranking>
 #[test]
 fn test_filename_boosts_search_ranking() {
     let dir = tempdir().unwrap();

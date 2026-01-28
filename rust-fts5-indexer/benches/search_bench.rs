@@ -25,11 +25,13 @@ impl RssSampler {
     /// Sample current RSS in MB (post-operation snapshot, not peak).
     fn sample_mb(&mut self) -> f64 {
         self.sys.refresh_processes(ProcessesToUpdate::Some(&[self.pid]), true);
-        self.sys
-            .process(self.pid)
-            .map(|p| p.memory() as f64 / 1_000_000.0) // bytes to MB
-            .unwrap_or(0.0)
+        self.sys.process(self.pid).map_or(0.0, |p| rss_mb(p.memory()))
     }
+}
+
+#[allow(clippy::cast_precision_loss)]
+fn rss_mb(bytes: u64) -> f64 {
+    bytes as f64 / 1_000_000.0
 }
 
 /// Create a test database with N files for benchmarking.

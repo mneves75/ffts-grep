@@ -243,21 +243,20 @@ See `cli.rs:193-277`:
 impl Cli {
     /// Resolve the effective project directory.
     pub fn project_dir(&self) -> Result<PathBuf> {
-        match &self.project_dir {
-            Some(path) => self.expand_tilde(path),
-            None => {
-                let cwd = std::env::current_dir().map_err(|e| IndexerError::ConfigInvalid {
-                    field: "project_dir".to_string(),
-                    value: "current_dir".to_string(),
-                    reason: e.to_string(),
-                })?;
-                Ok(find_project_root(&cwd).path)
-            }
+        if let Some(path) = &self.project_dir {
+            Self::expand_tilde(path)
+        } else {
+            let cwd = std::env::current_dir().map_err(|e| IndexerError::ConfigInvalid {
+                field: "project_dir".to_string(),
+                value: "current_dir".to_string(),
+                reason: e.to_string(),
+            })?;
+            Ok(find_project_root(&cwd).path)
         }
     }
 
     /// Expand tilde (`~`) to home directory in path.
-    fn expand_tilde(&self, path: &Path) -> Result<PathBuf> {
+    fn expand_tilde(path: &Path) -> Result<PathBuf> {
         if let Some(stripped) = path.to_str().and_then(|s| s.strip_prefix('~')) {
             let home = dirs::home_dir().ok_or_else(|| IndexerError::ConfigInvalid {
                 field: "project_dir".to_string(),
@@ -326,7 +325,7 @@ Fast full-text search file indexer using SQLite FTS5
 A high-performance file indexer that provides sub-10ms queries after initial indexing.
 Uses SQLite FTS5 with BM25 ranking for relevant search results.
 
-Version: 0.11.2
+Version: 0.11.3
 Repository: https://github.com/mneves75/ffts-grep
 
 SUBCOMMANDS:

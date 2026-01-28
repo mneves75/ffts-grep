@@ -126,11 +126,16 @@ fn main() -> std::process::ExitCode {
                 &pragma_config,
                 indexer_config(),
                 search_query,
-                *paths,
-                output_format,
-                cli.refresh,
-                *no_auto_init,
-                cli.quiet,
+                SearchOptions {
+                    config: SearchConfig {
+                        paths_only: *paths,
+                        format: output_format,
+                        max_results: DEFAULT_MAX_RESULTS,
+                    },
+                    refresh: cli.refresh,
+                    no_auto_init: *no_auto_init,
+                    quiet: cli.quiet,
+                },
             );
         }
         None => {
@@ -140,11 +145,16 @@ fn main() -> std::process::ExitCode {
                     &pragma_config,
                     indexer_config(),
                     &cli.query,
-                    false,
-                    OutputFormat::Plain,
-                    cli.refresh,
-                    false,
-                    cli.quiet,
+                    SearchOptions {
+                        config: SearchConfig {
+                            paths_only: false,
+                            format: OutputFormat::Plain,
+                            max_results: DEFAULT_MAX_RESULTS,
+                        },
+                        refresh: cli.refresh,
+                        no_auto_init: false,
+                        quiet: cli.quiet,
+                    },
                 );
             }
 
@@ -167,11 +177,16 @@ fn main() -> std::process::ExitCode {
                                 &pragma_config,
                                 indexer_config(),
                                 &query_parts,
-                                false,
-                                OutputFormat::Plain,
-                                refresh,
-                                false,
-                                cli.quiet,
+                                SearchOptions {
+                                    config: SearchConfig {
+                                        paths_only: false,
+                                        format: OutputFormat::Plain,
+                                        max_results: DEFAULT_MAX_RESULTS,
+                                    },
+                                    refresh,
+                                    no_auto_init: false,
+                                    quiet: cli.quiet,
+                                },
                             );
                         }
                     }
@@ -195,6 +210,19 @@ Helper used by main to treat whitespace-only input as empty:
 fn query_is_empty(parts: &[String]) -> bool {
     parts.iter().all(|part| part.trim().is_empty())
 }
+```
+
+Search options bundle the remaining flags to keep the call sites readable:
+
+```rust
+struct SearchOptions {
+    config: SearchConfig,
+    refresh: bool,
+    no_auto_init: bool,
+    quiet: bool,
+}
+
+const DEFAULT_MAX_RESULTS: u32 = 50;
 ```
 
 ### Key Observations
@@ -274,12 +302,9 @@ fn run_search(
     config: &PragmaConfig,
     indexer_config: IndexerConfig,
     query: &[String],
-    paths_only: bool,
-    format: OutputFormat,
-    refresh: bool,
-    no_auto_init: bool,
-    quiet: bool,
+    options: SearchOptions,
 ) -> std::process::ExitCode {
+    let SearchOptions { config: search_config, refresh, no_auto_init, quiet } = options;
     let db_path = project_dir.join(DB_NAME);
     let query_str = query.join(" ");
     let mut already_indexed = false;
@@ -380,7 +405,6 @@ fn run_search(
         return ExitCode::Software.into();
     }
 
-    let search_config = SearchConfig { paths_only, format, max_results: 50 };
     let mut searcher = Searcher::new(&mut db, search_config);
 
     match searcher.search(&query_str) {
