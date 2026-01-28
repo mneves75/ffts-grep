@@ -63,8 +63,16 @@
     {
       "command": "./target/release/ffts-grep --project-dir <tmp> --quiet init --force; ./target/release/ffts-grep --project-dir <tmp> --quiet index; ./target/release/ffts-grep --project-dir <tmp> --quiet doctor",
       "result": "passed"
+    },
+    {
+      "command": "printf '{\"query\":\"main\",\"refresh\":true}' | ./target/release/ffts-grep --project-dir <tmp>",
+      "result": "passed"
+    },
+    {
+      "command": "./target/release/ffts-grep --project-dir <tmp> doctor --json (validated)",
+      "result": "passed"
     }
   ],
   "status": "passed",
-  "last_updated": "2026-01-27T23:21:07-0300"
+  "last_updated": "2026-01-27T23:23:15-0300"
 }

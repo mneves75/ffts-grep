@@ -154,3 +154,8 @@
 ## Iteration 30: Release Binary Doctor Smoke
 
 - [x] Run release binary doctor on temp project after init/index
+
+## Iteration 31: Release JSON Protocol Smoke
+
+- [x] Verify release binary stdin JSON refresh path
+- [x] Validate doctor --json output parses
