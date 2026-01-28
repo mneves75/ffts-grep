@@ -44,6 +44,9 @@ Or use the deploy scripts:
 ./deploy_cc.sh     # Install to ~/.claude/ and update Claude Code settings
 ```
 
+`deploy.sh` builds and installs to `~/.local/bin` by default (override with `--install-dir`).
+Make sure that directory is on your `PATH` for `ffts-grep` to be available.
+
 ## Toolchain and CI
 
 - **MSRV**: Rust 1.85+ (Edition 2024)

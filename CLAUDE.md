@@ -47,6 +47,7 @@ See `rust-fts5-indexer/src/lib.rs` for exported modules and types.
 
 `deploy.sh` installs to `~/.local/bin/ffts-grep` by default (override with `--install-dir`).
 `deploy_cc.sh` installs to `~/.claude/ffts-grep` and can update Claude Code settings.
+`deploy.sh` does not modify Claude Code settings.
 
 ## Claude Code Integration
 
