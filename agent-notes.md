@@ -704,3 +704,9 @@
 - Decision: No retag needed; tag points to release content while HEAD carries audit trail
 - Commands: git describe --tags --dirty; git rev-list --count v0.11.4..HEAD; git log --oneline --decorate -n 5
 - Open questions: None
+2026-01-27 23:21:13 -0300
+- Step: Release-binary doctor smoke test
+- Result: doctor checks passed on temp project using release binary
+- Decision: Record command in tests.json and progress.md
+- Commands: ./target/release/ffts-grep --project-dir <tmp> --quiet init --force; ./target/release/ffts-grep --project-dir <tmp> --quiet index; ./target/release/ffts-grep --project-dir <tmp> --quiet doctor
+- Open questions: None

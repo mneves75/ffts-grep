@@ -150,3 +150,7 @@
 ## Iteration 29: Tag Distance Audit
 
 - [x] Verified HEAD is 6 commits ahead of v0.11.4 (logging/audit trail only)
+
+## Iteration 30: Release Binary Doctor Smoke
+
+- [x] Run release binary doctor on temp project after init/index
