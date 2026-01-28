@@ -638,3 +638,15 @@
 - Decision: Behavior matches spec; log evidence in tests.json
 - Commands: cargo run --bin ffts-grep -- --project-dir <tmp> --refresh; printf '{"query":"   ","refresh":true}\n' | cargo run --bin ffts-grep -- --project-dir <tmp>; cargo run --bin ffts-grep -- --project-dir <tmp> --quiet --refresh search main
 - Open questions: None
+2026-01-27 22:51:15 -0300
+- Step: Bump version to 0.11.4 and update release docs
+- Result: Updated Cargo.toml, README badge, CLAUDE.md, changelogs, and version references across docs
+- Decision: Release note records verification-only updates since 0.11.3
+- Commands: apply_patch (Cargo.toml, CHANGELOG.md, rust-fts5-indexer/CHANGELOG.md, README.md, CLAUDE.md, docs/*)
+- Open questions: None
+2026-01-27 22:51:42 -0300
+- Step: Verify release-tools version check after 0.11.4 bump
+- Result: release-tools check-version passed (README badge matches Cargo.toml 0.11.4)
+- Decision: Proceed to release commit/tag/push
+- Commands: cargo run --bin release-tools -- check-version
+- Open questions: None

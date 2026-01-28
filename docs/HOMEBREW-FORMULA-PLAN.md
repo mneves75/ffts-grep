@@ -39,7 +39,7 @@ homebrew-tap/
 
 ## Implementation
 
-Pick a release version and use it consistently below (example: `0.11.3`).
+Pick a release version and use it consistently below (example: `0.11.4`).
 
 ### Step 1: Calculate SHA256
 
@@ -251,7 +251,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag (e.g., v0.11.3)'
+        description: 'Version tag (e.g., v0.11.4)'
         required: true
         type: string
 
