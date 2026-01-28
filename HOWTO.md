@@ -22,9 +22,23 @@ cd ffts-grep/rust-fts5-indexer
 cargo build --release
 ```
 
-### 2. Deploy to Claude Code
+### 2. Deploy (local CLI)
 
 The easiest way is to use the deploy script:
+
+```bash
+./deploy.sh
+```
+
+This will:
+1. Build the release binary
+2. Install to `~/.local/bin/ffts-grep` (override with `--install-dir`)
+3. Re-sign on macOS (to prevent SIGKILL)
+4. Verify the install via `ffts-grep --version`
+
+### 3. Deploy to Claude Code (optional)
+
+If you want Claude Code integration, use the Claude deploy script:
 
 ```bash
 ./deploy_cc.sh
@@ -36,7 +50,7 @@ This will:
 3. Update `~/.claude/settings.json` with the binary path
 4. Initialize the current project
 
-### 3. Manual Installation
+### 4. Manual Installation
 
 **Option A: Install to ~/.claude (recommended for Claude Code)**
 ```bash
@@ -59,7 +73,7 @@ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-### 4. Verify Installation
+### 5. Verify Installation
 
 ```bash
 ffts-grep --version

@@ -37,10 +37,11 @@ cp target/release/ffts-grep ~/.local/bin/
 chmod +x ~/.local/bin/ffts-grep
 ```
 
-Or use the deploy script for Claude Code integration:
+Or use the deploy scripts:
 
 ```bash
-./deploy_cc.sh
+./deploy.sh        # Install to ~/.local/bin (default) for general CLI usage
+./deploy_cc.sh     # Install to ~/.claude/ and update Claude Code settings
 ```
 
 ## Toolchain and CI

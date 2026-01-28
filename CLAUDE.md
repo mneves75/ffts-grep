@@ -41,10 +41,12 @@ See `rust-fts5-indexer/src/lib.rs` for exported modules and types.
 ## Deployment
 
 ```bash
-./deploy_cc.sh                       # Build, install to ~/.claude/, reindex
+./deploy.sh                          # Build, install to ~/.local/bin (default), verify
+./deploy_cc.sh                       # Build, install to ~/.claude/, update settings, reindex
 ```
 
-This installs to `~/.claude/ffts-grep` and can update Claude Code settings.
+`deploy.sh` installs to `~/.local/bin/ffts-grep` by default (override with `--install-dir`).
+`deploy_cc.sh` installs to `~/.claude/ffts-grep` and can update Claude Code settings.
 
 ## Claude Code Integration
 
@@ -123,7 +125,7 @@ Heavily optimized release builds:
 - panic: "abort"
 
 ### macOS Code Signing
-`deploy_cc.sh` automatically re-signs the binary on macOS after copying to prevent SIGKILL.
+`deploy.sh` and `deploy_cc.sh` automatically re-sign the binary on macOS after copying to prevent SIGKILL.
 
 ## CLI Commands Reference
 
