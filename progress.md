@@ -134,3 +134,7 @@
 
 - [x] Run release-tools checklist --verify
 - [x] Generate release-notes for 0.11.4
+
+## Iteration 26: Release Tools Version Check
+
+- [x] Verify release-tools checklist --verify --version 0.11.4
