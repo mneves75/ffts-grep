@@ -680,3 +680,9 @@
 - Decision: Record verification in tests.json and progress log
 - Commands: cargo run --bin release-tools -- checklist --verify; cargo run --bin release-tools -- release-notes --version 0.11.4
 - Open questions: None
+2026-01-27 23:14:29 -0300
+- Step: Verify release-tools checklist for explicit 0.11.4 section
+- Result: checklist --verify --version 0.11.4 passed and version badge check OK
+- Decision: Record verification in tests.json
+- Commands: cargo run --bin release-tools -- checklist --verify --version 0.11.4
+- Open questions: None
