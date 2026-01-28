@@ -626,3 +626,9 @@
 - Decision: Release complete; follow-up manual smoke test optional per spec
 - Commands: git add -A; git commit -m "release: prepare 0.11.3"; git tag v0.11.3; git push; git push origin v0.11.3
 - Open questions: None
+2026-01-27 21:44:48 -0300
+- Step: Manual CLI smoke test in temp project + release checklist verification
+- Result: init/index/search succeeded in temp dir; search returned src/main.rs; release-tools checklist --verify passed
+- Decision: Release validation complete; no repo artifacts created
+- Commands: cargo run --bin ffts-grep -- --project-dir <tmp> --quiet init --force; cargo run --bin ffts-grep -- --project-dir <tmp> --quiet index; cargo run --bin ffts-grep -- --project-dir <tmp> --quiet search main; cargo run --bin release-tools -- checklist --verify
+- Open questions: None
