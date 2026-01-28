@@ -111,3 +111,8 @@
 
 - [x] Verify refresh without query fails (CLI + stdin)
 - [x] Verify refresh with query succeeds
+
+## Iteration 21: Release Prep 0.11.4
+
+- [x] Bump version to 0.11.4 and update release docs
+- [x] Verify release-tools check-version

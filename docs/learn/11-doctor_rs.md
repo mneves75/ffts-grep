@@ -194,7 +194,7 @@ See `doctor.rs:146-214`:
 
 ```json
 {
-  "version": "0.11.3",
+  "version": "0.11.4",
   "project_dir": "/path/to/project",
   "checks": [...],
   "summary": {

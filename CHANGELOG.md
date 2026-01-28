@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Nothing yet.
 
+## [0.11.4] - 2026-01-28
+
+### Added
+- **Release verification**: Recorded post-release smoke coverage for refresh guardrails and checklist validation
+
+### Fixed
+- Nothing yet.
+
 ## [0.11.3] - 2026-01-28
 
 ### Added
@@ -90,7 +98,8 @@ Initial public release. Fast full-text search file indexer using SQLite FTS5.
 - **Reliability**: Atomic reindex, race-safe temp files, WAL mode
 - **Quality**: 193 tests, clippy pedantic compliance, Rust Edition 2024
 
-[Unreleased]: https://github.com/mneves75/ffts-grep/compare/v0.11.3...HEAD
+[Unreleased]: https://github.com/mneves75/ffts-grep/compare/v0.11.4...HEAD
+[0.11.4]: https://github.com/mneves75/ffts-grep/releases/tag/v0.11.4
 [0.11.3]: https://github.com/mneves75/ffts-grep/releases/tag/v0.11.3
 [0.11.2]: https://github.com/mneves75/ffts-grep/releases/tag/v0.11.2
 [0.11.1]: https://github.com/mneves75/ffts-grep/releases/tag/v0.11.1
